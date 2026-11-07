@@ -7,6 +7,7 @@ import { Meter } from "@/components/ui/Meter";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { auditAccessibility, type A11yReport } from "@/lib/engines/a11y-audit";
 import { measureLoad, type LoadBreakdown } from "@/lib/engines/cognitive-load";
+import type { StrainReading } from "@/lib/engines/signals";
 import { useRealtimeSync } from "@/lib/realtime";
 import type { Role } from "@/lib/types";
 
@@ -25,10 +26,17 @@ import type { Role } from "@/lib/types";
 export function JudgeOverlay({
   role,
   measureRoot,
+  strain = null,
 }: {
   role: Role;
   /** Selector for the subtree that counts as "the product surface". */
   measureRoot: string;
+  /**
+   * Interaction strain, customer surface only. Passed in from this tab's own
+   * monitor because it is never published — so this overlay is the one place
+   * it is ever shown, and only on the device that measured it.
+   */
+  strain?: StrainReading | null;
 }) {
   const [open, setOpen] = useState(false);
   const [a11y, setA11y] = useState<A11yReport | null>(null);
@@ -122,7 +130,7 @@ export function JudgeOverlay({
                       />
                       <Mechanism
                         name="Interaction strain"
-                        body="Scroll reversals, taps that hit nothing, disclosure churn and stalls — each on a short rolling window, none of it persisted or sent anywhere."
+                        body="Scroll reversals, taps that hit nothing, disclosure churn and stalls — each on a short rolling window, none of it persisted. It never leaves this device: the agent console sees the screen's load and whether Focus Mode is on, never this."
                       />
                       <Mechanism
                         name="Adaptive Focus"
@@ -181,6 +189,31 @@ export function JudgeOverlay({
                 </section>
               ) : null}
 
+              {strain && role === "customer" ? (
+                <section className="mt-6">
+                  <h3 className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
+                    Interaction strain · this device only
+                  </h3>
+                  <p className="display tnum mt-2 text-4xl text-fg">{strain.score}</p>
+                  <p className="text-xs text-fg-3">
+                    {strain.band} · offers a simpler screen at 45 · never sent to Capital One
+                  </p>
+                  {strain.contributions.length ? (
+                    <ul className="mt-3 space-y-1.5 text-sm">
+                      {strain.contributions.map((c) => (
+                        <li key={c.label} className="flex justify-between gap-3">
+                          <span className="text-fg-2">
+                            {c.label}
+                            <span className="block text-xs text-fg-3">{c.detail}</span>
+                          </span>
+                          <span className="tnum font-semibold text-fg">+{c.points}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
+              ) : null}
+
               {telemetry && role === "bank" ? (
                 <section className="mt-6">
                   <h3 className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
@@ -188,7 +221,7 @@ export function JudgeOverlay({
                   </h3>
                   <dl className="mt-2 space-y-1.5 text-sm">
                     <Row label="Cognitive load" value={`${telemetry.load} (${telemetry.loadBand})`} />
-                    <Row label="Interaction strain" value={`${telemetry.strain} (${telemetry.strainBand})`} />
+                    <Row label="Interaction strain" value="Not shared — stays on Alex's device" />
                     <Row label="Focus Mode" value={telemetry.focusMode ? "on" : "off"} />
                     <Row label="Screen" value={telemetry.view} />
                   </dl>

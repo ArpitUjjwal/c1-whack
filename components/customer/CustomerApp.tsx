@@ -33,8 +33,7 @@ const TAB_LABEL: Record<CustomerTab, string> = {
 };
 
 export function CustomerApp() {
-  const { state, dispatch, setView, agentOnline, hydrated, now, telemetry } =
-    useRealtimeSync();
+  const { state, dispatch, setView, agentOnline, hydrated, now } = useRealtimeSync();
   const [tab, setTab] = useState<CustomerTab>("home");
   const [celebration, setCelebration] = useState<{
     headline: string;
@@ -45,14 +44,17 @@ export function CustomerApp() {
   const focusMode = state.ui.focusMode;
 
   /* ------------------------------------------------ cognitive monitoring */
-  const collector = useCognitiveMonitor({
+  const adaptive = state.ui.adaptiveEnabled;
+  const { collector, strain: strainReading } = useCognitiveMonitor({
     rootRef: mainRef,
     daysSinceLastOpen: state.customer.daysSinceLastOpen,
     focusMode,
     view: TAB_LABEL[tab],
+    enabled: adaptive,
   });
 
-  const strain = telemetry?.strain ?? 0;
+  // Read on this device only. It is never published to the agent console.
+  const strain = strainReading?.score ?? 0;
 
   /*
     The offer is derived, not stored: it appears while strain is high and
@@ -60,6 +62,7 @@ export function CustomerApp() {
     persisted — the app then never asks again, on this or any later session.
   */
   const showFocusOffer =
+    adaptive &&
     !focusMode &&
     !state.ui.focusDeclined &&
     strain >= FOCUS_OFFER_THRESHOLD &&
@@ -274,6 +277,7 @@ export function CustomerApp() {
               {tab === "help" ? (
                 <HelpPanel
                   state={state}
+                  dispatch={dispatch}
                   agentOnline={agentOnline}
                   onMessageAgent={(text) =>
                     dispatch({
@@ -307,7 +311,7 @@ export function CustomerApp() {
 
       {/* Presentation chrome. Excluded from every measurement the app makes. */}
       <DemoDirector role="customer" />
-      <JudgeOverlay role="customer" measureRoot="#customer-main" />
+      <JudgeOverlay role="customer" measureRoot="#customer-main" strain={strainReading} />
 
       {/* Spoken announcements. Polite, so nothing interrupts mid-sentence. */}
       <p aria-live="polite" className="sr-only">

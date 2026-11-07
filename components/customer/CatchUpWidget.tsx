@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Disclosure } from "@/components/ui/Disclosure";
 import { Panel } from "@/components/ui/Panel";
 import { Sheet } from "@/components/ui/Sheet";
+import { CREDIT_FILE_RETENTION, creditFileLine, payByDate } from "@/lib/compliance";
 import { longDate, money, shortDate } from "@/lib/format";
 import type { AppState } from "@/lib/types";
 
@@ -103,7 +104,7 @@ export function CatchUpWidget({
                 {credit.extendedDueDate
                   ? longDate(credit.extendedDueDate)
                   : "a later date"}{" "}
-                instead. No fee, and nothing reported late.
+                instead. No extra fee for the extra time.
               </p>
               <Button variant="outline" size="sm" className="mt-3" onClick={onAcceptExtension}>
                 Yes, I&apos;ll take the extra time
@@ -154,8 +155,8 @@ export function CatchUpWidget({
               <Row
                 label="Late fee"
                 value={
-                  credit.lateFeeWaived
-                    ? `${money(credit.lateFee)} — waived by ${agentName}`
+                  credit.lateFeeRefunded
+                    ? `${money(credit.lateFee)} — refunded by ${agentName}`
                     : money(credit.lateFee)
                 }
               />
@@ -163,8 +164,8 @@ export function CatchUpWidget({
               <Row label="Interest rate (APR)" value={`${credit.apr}%`} />
             </dl>
             <p className="mt-3 text-xs text-fg-3">
-              Nothing here affects your credit report yet. Payments are reported
-              after 30 days past due.
+              {creditFileLine(payByDate(credit))} Missed payments that are
+              reported can stay on a credit file for {CREDIT_FILE_RETENTION}.
             </p>
           </Disclosure>
         </div>
@@ -175,11 +176,11 @@ export function CatchUpWidget({
         open={confirming}
         onClose={() => setConfirming(false)}
         title={`Pay ${money(amount)}?`}
-        description={`From ${state.checking.nickname} to your ${credit.nickname}. That's everything this card needs right now.`}
+        description={`From your ${state.current.provider} current account to your ${credit.nickname}. That's everything this card needs right now.`}
       >
         <dl className="glass space-y-2.5 rounded-xl p-4 text-[0.9375rem]">
           <Row label="Paying" value={money(amount)} strong />
-          <Row label="From" value={state.checking.nickname} />
+          <Row label="From" value={`${state.current.provider} ••••${state.current.accountNumber.slice(-4)}`} />
           <Row label="Safe to spend after" value={money(safeAfterPayment)} strong />
         </dl>
         <div className="mt-5 space-y-2.5">
@@ -205,7 +206,7 @@ export function CatchUpWidget({
         open={optionsOpen}
         onClose={() => setOptionsOpen(false)}
         title="That's completely fine"
-        description="Pick whatever feels doable. Any of these stops the account going further past due."
+        description="Pick whatever feels doable. You don't have to explain why."
       >
         <div className="space-y-2.5">
           <Button

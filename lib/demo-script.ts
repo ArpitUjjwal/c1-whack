@@ -26,9 +26,15 @@ export interface Beat {
 
 export const BEATS: Beat[] = [
   {
+    caption:
+      "Nearly half of people behind on payments feel harassed (49%) or overwhelmed (48%) by the volume of contact from creditors. — Money and Mental Health",
+    look: "both",
+    note: "Open on the number. Then: this is what that looks like for one customer.",
+  },
+  {
     caption: "Alex hasn't opened the app in 14 days. Three reminder emails, none opened.",
     look: "bank",
-    note: "Set the scene. The silence is the problem, not the $41.",
+    note: "Set the scene. The silence is the problem, not the £41.",
   },
   {
     caption:
@@ -37,10 +43,9 @@ export const BEATS: Beat[] = [
     note: "Point at the contributions. Say the weights are hand-tuned, not trained.",
   },
   {
-    caption: "The agent waives the late fee first, before asking for anything.",
+    caption: "The Silence Model picks the channel: one in-app message, not a fourth email.",
     look: "bank",
-    action: { type: "WAIVE_LATE_FEE" },
-    note: "$29 of trust, spent before the ask.",
+    note: "It decides how to reach out, never what to give away. Point at the 'never feeds credit decisions' line.",
   },
   {
     caption: "Now watch what the standard collections script would have said.",
@@ -58,7 +63,7 @@ export const BEATS: Beat[] = [
     caption: "One click rewrites it.",
     look: "bank",
     signal: { to: "bank", action: "rewrite_draft" },
-    note: "100 → 0, and the meaning survives.",
+    note: "The threats go. The one real consequence stays — once, calmly, with the date.",
   },
   {
     caption: "Sent. It reaches Alex's phone instantly, and calmly.",
@@ -81,7 +86,7 @@ export const BEATS: Beat[] = [
     caption: "Focus Mode: one decision, nothing else. Load drops below 25.",
     look: "both",
     action: { type: "SET_FOCUS_MODE", on: true },
-    note: "Watch the Customer Lens on the console drop at the same moment.",
+    note: "Watch the Screen lens on the console drop at the same moment. Only the screen's load crosses over — never how Alex is finding it.",
   },
   {
     caption: "Alex pays. Safe-to-Spend doesn't move — that money was already set aside.",
@@ -96,8 +101,15 @@ export const BEATS: Beat[] = [
   },
   {
     caption:
-      "Thirty days under both policies. Standard: never resolved, $29, six years on file. Clarity: day four, nothing.",
+      "Only now, after Alex has paid, is there an optional goodwill refund — once a year. It rewards re-engaging, not silence.",
+    look: "both",
+    action: { type: "REFUND_LATE_FEE" },
+    note: "Concessions are extras, never the mechanism.",
+  },
+  {
+    caption:
+      "Thirty days, three policies. Standard: never resolved, reported, six years on file. Clarity's design alone: resolved on day four, nothing given away.",
     look: "bank",
-    note: "Run the simulation. Then stop talking.",
+    note: "Run the simulation. The extras lane is faster, but the design lane is the claim.",
   },
 ];

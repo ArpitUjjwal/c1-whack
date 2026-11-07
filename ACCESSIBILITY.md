@@ -11,14 +11,22 @@ overlay and read the numbers live.
 
 ## 1. The problem being solved
 
-Alex Rivera has a checking account, a credit card six days past due, and
-fourteen days without opening the app. The fourteen days are the actual
-problem.
+Alex Rivera has a Capital One UK credit card six days past due (£41, with a
+£12 late fee already charged), a current account at another bank linked over
+Open Banking, and fourteen days without opening the app. The fourteen days are
+the actual problem.
+
+The setting is the UK throughout: pounds, "current account" and "sort code",
+"credit file" and "credit reference agencies". Capital One UK's own guidance is
+that a payment is reported once it is more than 30 days late, and a missed
+payment can stay on a credit file for six years; a payment plan does not stop
+that. Every screen reads that wording from one file, `lib/compliance.ts`, and
+states it cautiously ("should keep it off your credit file").
 
 Alex's self-declared needs, shown verbatim to every agent:
 
 - Prefers plain language
-- Prone to financial avoidance
+- Finds money tasks hard to start
 - One step at a time
 - No urgency or pressure language
 
@@ -41,7 +49,7 @@ making it worse.
 
 A balance is a number you still have to do arithmetic on, and that arithmetic
 is exactly what gets avoided. The app does the subtraction and shows only the
-answer; the working stays one tap down under "Show the math".
+answer; the working stays one tap down under "Show the maths".
 
 **The property that matters:** paying the overdue minimum leaves Safe-to-Spend
 *unchanged*, because the money was already set aside. The app says so before
@@ -56,9 +64,9 @@ the invariance holds for every arrangement (`lib/selectors.ts`).
 
 ### Progressive disclosure
 
-Routing numbers, full account numbers, APR, credit limits, statement mechanics
+Sort codes, full account numbers, APR, credit limits, statement mechanics
 and late-fee detail are all present and all collapsed by default. Someone
-looking for their balance should not have to read past a routing number to find
+looking for their balance should not have to read past a sort code to find
 it. `components/ui/Disclosure.tsx` wires `aria-expanded` / `aria-controls` and
 animates height only.
 
@@ -124,8 +132,14 @@ it*, not what they are doing:
 
 Three rules this is built under:
 
-1. **Nothing identifying is collected.** Timestamps of gesture *kinds*, in
-   memory, in the tab. Nothing is persisted and nothing leaves the device.
+1. **Nothing identifying is collected, and strain never leaves the device.**
+   Timestamps of gesture *kinds*, in memory, in the tab. Nothing is persisted.
+   What crosses to the agent console is exactly: the screen's cognitive load (a
+   property of the screen), the current view, and whether Focus Mode is on
+   (Alex's own choice). The strain reading is left out of both the payload and
+   the publish fingerprint (`lib/useCognitiveMonitor.ts`), so not even the
+   timing of a message reveals it. A bank watching a customer's state of mind
+   live is the inferred-health-data problem, whatever the intention.
 2. **Every signal decays.** Confusion two minutes ago is not evidence about now.
 3. **The output is advisory.** It can offer to simplify; it can never act for
    the customer.
@@ -137,7 +151,9 @@ decision — nav hidden, type up, supporting detail gone — and the measured lo
 drops below the 25 target.
 
 **Verified end to end:** load 29 → **19** on acceptance, visible simultaneously
-on the agent console's Customer Lens.
+on the agent console's Screen lens. (One pair, defined once as
+`FOCUS_LOAD_BEFORE` / `FOCUS_LOAD_AFTER` in `lib/engines/cognitive-load.ts`,
+and quoted by the simulation and the demo.)
 
 #### Ethical guardrails (non-negotiable)
 
@@ -153,8 +169,13 @@ just intended:
 - **No means no, permanently.** Declining writes `ui.focusDeclined` to persisted
   state and the app never asks again — on this session or any later one. The
   customer's preference outranks the model.
-- **The meter is never shown to the customer.** The load and strain numbers live
-  on the agent console and the Judge overlay only.
+- **The meter is never shown to the customer, and strain is never shown to the
+  bank.** The agent console sees screen load and Focus Mode state only. Strain
+  appears in one place: the Judge overlay on the customer's own device.
+- **Alex can turn it all off.** The Help tab has a "What Clarity notices"
+  panel — what it notices, what it never does — and an *Adaptive screen*
+  switch. Off means nothing is measured or published and Focus Mode is never
+  offered; the console says so.
 
 ---
 
@@ -169,7 +190,7 @@ told afterwards has already done the harm.
 
 | Category | Points each | Cap |
 | --- | --- | --- |
-| Consequence and threat framing | 20 | 60 |
+| Threats: escalation, vague consequences, "will be reported" | 20 | 60 |
 | Blame directed at the customer | 18 | 54 |
 | Urgency and compulsion | 14 | 42 |
 | Jargon without a plain-language gloss | 8 | 24 |
@@ -177,6 +198,19 @@ told afterwards has already done the harm.
 | Reading level above grade 8 | 4 | 20 |
 | More than one decision in one message | 10 | 10 |
 | Passive voice hiding who acts | 5 | 10 |
+| Consequence with no date, or said twice | 10 | 30 |
+
+**Threats are not consequences.** Softening tone is the product; deleting
+information the customer needs to decide is not, and UK rules expect
+communications to be clear, fair and not misleading. So a real consequence
+stated **once, calmly, with a specific date** scores 0 and is underlined as
+*allowed*. An undated one, or a second mention, scores.
+
+**Locked wording.** The composer can attach compliance-required segments — the
+dated credit-file line and a free-debt-advice signpost (illustrative, after
+FCA CONC 7). They sit outside the editable draft, are scored but never
+penalised, are never sent to either rewriter, and are appended verbatim on
+send.
 
 Every finding names the exact span that caused it, the reason in one actionable
 sentence, and the points it contributed. No model, no training data, no opacity
@@ -185,18 +219,33 @@ sentence, and the points it contributed. No model, no training data, no opacity
 **Measured example:**
 
 > "You must pay the full balance immediately to avoid collections. Failure to do
-> so will be reported to the credit bureaus."
+> so will be reported to the credit reference agencies."
 
 scores **100/100 — "Likely to cause another silence"**. One click rewrites it to:
 
-> "You can pay the full balance whenever you're ready. Nothing goes on your
-> credit file before 30 days."
+> "You can pay the full balance. Paying it by Sunday 29 November should keep it
+> off your credit file."
 
-which scores **0**, with every factual claim intact.
+which scores **0**. The threats are gone; the one real consequence is still
+there, once, with its date. (The date is the due date plus 28 days, leaving
+two days' margin before Capital One's 30-day reporting point.) The Claude
+rewrite prompt carries the same rule.
 
 A message in the harmful band requires a second, explicit confirmation to send.
 It is not hard-blocked — agents need autonomy — but it says plainly what the
 account history predicts.
+
+### Contact preferences and the frequency guard
+
+Alex sets contact rules on a calm day — channel, at most *N* messages a week,
+quiet hours — in the app's Help tab, in the spirit of Money and Mental Health's
+Advance Choice Documents. They are consent, not inference, so they cannot be
+gamed and they need no reading of anyone's state. The console shows them as a
+banner under Alex's needs; the composer and the check-in action show which
+message this would be this week ("2nd message this week") and warn, with a
+second press required, when a send would break a rule. The evidence is printed
+beside it: people getting five or more creditor calls a month were far more
+likely to say contact harmed their mental health (91% against 57%).
 
 ### Readability
 
@@ -212,16 +261,33 @@ mid-conversation when the customer acts. Each variant carries a **"Don't say"**
 column with the reason — most harm in an arrears conversation comes from
 standard phrasing nobody chose:
 
-- "You must…" → pressure is what produced the 14-day avoidance
+- "You must…" → pressure is what preceded the 14 quiet days
 - "Delinquent", "default", "collections" → escalates without informing
+- Leading with a fee refund → goodwill offered before paying rewards going quiet
 - Stacking options → Alex processes one step at a time
-- Mentioning the 14-day gap → naming the avoidance makes it shameful
+- Mentioning the 14-day gap → naming it makes it shameful
 
 ### The Silence Model, shown not asserted
 
 `lib/engines/silence-model.ts` treats not-opening-the-app as information. Six
 features, every weight and contribution on screen, and the panel states plainly
-that the weights are **hand-tuned, not trained on any data**. It also names what
+that the weights are **hand-tuned, not trained on any data**.
+
+Its output is a **reach-out priority**, in calm colours, never red, and the
+panel says on screen that it never feeds credit decisions, limits, fees or
+escalation. Alex's own disclosure ("Finds money tasks hard to start") moves
+them *up the support list* and nothing else. The model decides **how** to reach
+out — channel, tone, timing, honouring Alex's contact preferences — and
+**never what to give away**. There is no branch that recommends a fee refund or
+an extension: rewarding silence with a concession would be exploitable. The
+only goodwill in the product, a once-a-year late-fee refund, unlocks **after**
+the customer has paid.
+
+The 30-day simulation runs three lanes: the standard cadence, **Clarity's
+design alone** (calm nudge, Focus Mode, Safe-to-Spend, one-tap pay, a Direct
+Debit offer — nothing given away, the fee stands), and the design plus optional
+extras. The design-only lane resolves on day 4; concessions only make it a day
+faster. It also names what
 a real deployment would need: validation against outcomes, fairness testing
 across protected groups, and a route for a customer to see and contest their own
 score.
@@ -276,9 +342,9 @@ audit's own over-strict reading of labelled radio inputs.
 
 | Check | Result |
 | --- | --- |
-| Text contrast | 245/245 pass WCAG AA · worst 4.69:1 |
-| Touch targets | Pass at the 44px AAA bar |
-| Heading structure | 14 headings in order |
+| Text contrast | 344/344 pass WCAG AA · worst 4.69:1 |
+| Touch targets | 23/23 pass at the 44px AAA bar |
+| Heading structure | 15 headings in order |
 | Live regions | 5 present, none assertive |
 | Reduced motion | Honoured |
 
@@ -301,5 +367,8 @@ credible:
   without flagged vocabulary. The optional Claude pass exists precisely to cover
   that gap, and the local engine runs regardless.
 - The 30-day simulation uses **assumed** engagement constants, printed under it.
+- Compliance wording (`lib/compliance.ts`) is **illustrative**. The reporting
+  rule follows Capital One UK's published guidance; a real deployment would
+  take every locked segment verbatim from Capital One's compliance team.
 - Screen-reader testing has been done against the accessibility tree and
   semantics, **not** with a full manual pass in JAWS, NVDA or VoiceOver.

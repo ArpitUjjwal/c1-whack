@@ -32,6 +32,7 @@ const KINDS = [
   "grade",
   "multiple-asks",
   "passive",
+  "consequence",
 ] as const;
 
 const AnalysisSchema = z.object({
@@ -64,12 +65,19 @@ export async function POST(request: Request) {
   }
 
   let text: string;
+  let locked: string[] = [];
   try {
-    const body = (await request.json()) as { text?: unknown };
+    const body = (await request.json()) as { text?: unknown; locked?: unknown };
     if (typeof body.text !== "string" || !body.text.trim()) {
       return Response.json({ error: "bad_request" }, { status: 400 });
     }
     text = body.text.slice(0, 2000);
+    if (Array.isArray(body.locked)) {
+      locked = body.locked
+        .filter((x): x is string => typeof x === "string")
+        .slice(0, 4)
+        .map((x) => x.slice(0, 300));
+    }
   } catch {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
@@ -87,7 +95,11 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "user",
-          content: `Score this draft message and list the exact phrases that do the damage.\n\n---\n${text}\n---`,
+          content: `Score this draft message and list the exact phrases that do the damage.${
+            locked.length
+              ? `\n\nThese sentences are required compliance wording. Do not score or flag them:\n${locked.map((l) => `- ${l}`).join("\n")}`
+              : ""
+          }\n\n---\n${text}\n---`,
         },
       ],
     });
@@ -97,7 +109,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "unparsed" }, { status: 502 });
     }
 
-    return Response.json({ report: merge(text, parsed) });
+    return Response.json({ report: merge(text, parsed, locked) });
   } catch (error) {
     // Most specific first. Every branch leaves the client on the local engine.
     if (error instanceof Anthropic.BadRequestError) {
@@ -127,8 +139,9 @@ export async function POST(request: Request) {
 function merge(
   text: string,
   parsed: z.infer<typeof AnalysisSchema>,
+  locked: string[],
 ): PressureReport {
-  const local = analysePressure(text);
+  const local = analysePressure(text, { locked });
   const spans: PressureSpan[] = [...local.spans];
 
   for (const finding of parsed.findings) {

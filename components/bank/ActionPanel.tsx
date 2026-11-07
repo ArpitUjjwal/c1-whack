@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/Panel";
+import { checkContact, ordinal } from "@/lib/contact";
 import { isoDaysFromToday, longDate, money } from "@/lib/format";
 import type { Action, AppState } from "@/lib/types";
 
@@ -17,17 +18,26 @@ import type { Action, AppState } from "@/lib/types";
  *
  * Each action disables once taken, with the reason in text. An agent should
  * not be able to send the same nudge twice and turn care into spam.
+ *
+ * Goodwill follows action, never silence. The fee refund only unlocks once
+ * Alex has paid — "a one-off refund per year, after paying" — so the panel
+ * rewards re-engaging rather than going quiet.
  */
 export function ActionPanel({
   state,
   dispatch,
   customerOnline,
+  now,
 }: {
   state: AppState;
   dispatch: (action: Action) => void;
   customerOnline: boolean;
+  /** Slow-ticking clock from the store, so nothing here reads the time in render. */
+  now: number;
 }) {
   const [flash, setFlash] = useState<string | null>(null);
+  const [confirmCheckIn, setConfirmCheckIn] = useState(false);
+  const contact = checkContact(state, now, new Date(now).getHours());
   const { credit, flags, agentName } = state;
   const amount = money(credit.minimumDue);
   const split = money(Math.round((credit.minimumDue / 3) * 100) / 100);
@@ -39,6 +49,11 @@ export function ActionPanel({
   }, []);
 
   const sendCheckIn = () => {
+    if (contact.breaches.length > 0 && !confirmCheckIn) {
+      setConfirmCheckIn(true);
+      return;
+    }
+    setConfirmCheckIn(false);
     dispatch({
       type: "SEND_NUDGE",
       nudge: {
@@ -59,9 +74,9 @@ export function ActionPanel({
       type: "SEND_NUDGE",
       nudge: {
         title: "Take more time if you need it",
-        body: `I've moved the option into your app — you'd have until ${longDate(
+        body: `I've put the option in your app — you'd have until ${longDate(
           extensionDate,
-        )}. No fee, and nothing reported late.`,
+        )}. No extra fee for the extra time.`,
         tone: "warm",
         actionLabel: "Yes, give me more time",
         action: "accept_extension",
@@ -87,18 +102,16 @@ export function ActionPanel({
     announce("3-part payment plan offered.");
   };
 
-  const waiveFee = () => {
-    dispatch({ type: "WAIVE_LATE_FEE" });
-    dispatch({
-      type: "SEND_NUDGE",
-      nudge: {
-        title: `I've taken the ${money(credit.lateFee)} fee off`,
-        body: "You don't owe anything extra, and you didn't have to ask. Nothing else changes.",
-        tone: "celebrate",
-        fromAgent: agentName,
-      },
-    });
-    announce(`${money(credit.lateFee)} late fee waived and Alex told.`);
+  const paid = credit.status === "current";
+
+  /*
+    No separate message for the refund: it would be one more contact this
+    week, against Alex's own limit. It shows on the card in the app, and the
+    script gives the agent the line to say if they are already talking.
+  */
+  const refundFee = () => {
+    dispatch({ type: "REFUND_LATE_FEE" });
+    announce(`${money(credit.lateFee)} late fee refunded. It shows on Alex's card in the app.`);
   };
 
   return (
@@ -113,16 +126,22 @@ export function ActionPanel({
       </div>
       <p className="mt-1 text-sm text-fg-3">
         No action on this panel applies pressure, a deadline or a fee.
+        Concessions are optional extras, never the first move.
       </p>
 
       <div className="mt-4 space-y-2.5">
         <ActionRow
           title="Send gentle check-in nudge"
-          detail="One low-pressure message with a single tap-to-fix action."
+          detail={
+            confirmCheckIn
+              ? `${contact.breaches.join(" ")} Press again to send anyway.`
+              : `One low-pressure message with a single tap-to-fix action. Would be the ${ordinal(contact.nextOrdinal)} message this week.`
+          }
           disabled={false}
           onClick={sendCheckIn}
           variant="calm"
-          cta="Send"
+          cta={confirmCheckIn ? "Send anyway" : "Send"}
+          warn={contact.breaches.length > 0}
         />
 
         <ActionRow
@@ -132,7 +151,7 @@ export function ActionPanel({
               ? `Alex accepted. New date is ${longDate(credit.dueDate)}.`
               : flags.extensionOffered
                 ? "Already offered — the option is in Alex's app. Don't chase it."
-                : `Moves the date to ${longDate(extensionDate)}. No fee, nothing reported late.`
+                : `Moves the date to ${longDate(extensionDate)}. No extra fee for the extra time.`
           }
           disabled={flags.extensionOffered || credit.status !== "overdue"}
           disabledReason={
@@ -166,16 +185,21 @@ export function ActionPanel({
         />
 
         <ActionRow
-          title={`Waive the ${money(credit.lateFee)} late fee`}
+          title={`Refund the ${money(credit.lateFee)} late fee after payment`}
           detail={
-            credit.lateFeeWaived
-              ? "Already waived. Alex has been told."
-              : "One-time courtesy. Apply it before asking for anything."
+            credit.lateFeeRefunded
+              ? "Refunded. It shows on Alex's card in the app."
+              : "Optional goodwill: once a year, after the customer has paid."
           }
-          disabled={credit.lateFeeWaived}
-          onClick={waiveFee}
+          disabled={credit.lateFeeRefunded || !paid}
+          disabledReason={
+            !credit.lateFeeRefunded && !paid
+              ? "Unlocks once Alex has paid. Goodwill follows action, not silence."
+              : undefined
+          }
+          onClick={refundFee}
           variant="pos"
-          cta="Waive"
+          cta="Refund"
         />
       </div>
 
@@ -206,6 +230,7 @@ function ActionRow({
   onClick,
   variant,
   cta,
+  warn = false,
 }: {
   title: string;
   detail: string;
@@ -214,16 +239,20 @@ function ActionRow({
   onClick: () => void;
   variant: "primary" | "calm" | "pos";
   cta: string;
+  /** Sending now would break one of Alex's contact rules. */
+  warn?: boolean;
 }) {
   return (
     <div
       className={`flex items-start justify-between gap-4 rounded-xl border p-3.5 ${
-        disabled ? "border-edge bg-transparent" : "border-edge bg-glass"
+        disabled ? "border-edge bg-transparent" : warn ? "border-attn/40 bg-attn-dim" : "border-edge bg-glass"
       }`}
     >
       <div className="min-w-0">
         <p className="font-medium text-fg">{title}</p>
-        <p className="mt-0.5 text-sm text-fg-3">{disabledReason ?? detail}</p>
+        <p className={`mt-0.5 text-sm ${warn ? "text-attn" : "text-fg-3"}`}>
+          {disabledReason ?? detail}
+        </p>
       </div>
       <Button
         size="sm"

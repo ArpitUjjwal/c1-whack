@@ -33,8 +33,8 @@ import type {
 } from "./types";
 
 const CHANNEL = "capital-one-accessible-credit";
-const STATE_KEY = "c1a:state:v2";
-const BUS_KEY = "c1a:bus:v2";
+const STATE_KEY = "c1a:state:v3";
+const BUS_KEY = "c1a:bus:v3";
 
 /** A peer counts as present if we have heard from it this recently. */
 const PRESENCE_TTL_MS = 6000;
@@ -414,14 +414,16 @@ function isIntactState(value: unknown): value is AppState {
   return (
     typeof s?.rev === "number" &&
     Boolean(s.credit) &&
-    Boolean(s.checking) &&
+    Boolean(s.current) &&
+    Boolean(s.customer?.contactPreferences) &&
     Boolean(s.customer) &&
     Boolean(s.flags) &&
     Boolean(s.ui) &&
     Boolean(s.demo) &&
     Array.isArray(s.bills) &&
     Array.isArray(s.nudges) &&
-    Array.isArray(s.timeline)
+    Array.isArray(s.timeline) &&
+    Array.isArray(s.contactLog)
   );
 }
 

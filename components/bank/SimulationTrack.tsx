@@ -14,10 +14,12 @@ import {
 } from "@/lib/engines/simulation";
 
 /**
- * Thirty days, two policies, side by side.
+ * Thirty days, three policies, side by side.
  *
  * The product argument is an outcome argument, so this plays it out rather
- * than asserting it. Deterministic — identical on every run — and every
+ * than asserting it. The middle lane carries the claim: Clarity's design on
+ * its own, with nothing given away. Concessions sit in a third lane so a
+ * judge can see they are optional extras, not the mechanism. Deterministic — identical on every run — and every
  * assumption behind it is printed underneath, because a simulation whose
  * numbers cannot be inspected is just an animation.
  */
@@ -29,7 +31,8 @@ export function SimulationTrack() {
 
   const totalSteps = Math.max(
     result.standard.events.length,
-    result.clarity.events.length,
+    result.design.events.length,
+    result.extras.events.length,
   );
 
   /*
@@ -56,11 +59,11 @@ export function SimulationTrack() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 id="sim-heading" className="font-semibold text-fg">
-            Thirty days, two policies
+            Thirty days, three policies
           </h2>
           <p className="mt-1 text-sm text-fg-3">
-            The same customer, the same arrears, different outreach. Deterministic —
-            it runs the same way every time.
+            The same customer, the same arrears, different outreach. The middle
+            lane gives nothing away. Deterministic — it runs the same way every time.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={start} disabled={playing}>
@@ -68,9 +71,10 @@ export function SimulationTrack() {
         </Button>
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <Track outcome={result.standard} revealed={revealed} tone="red" />
-        <Track outcome={result.clarity} revealed={revealed} tone="pos" />
+      <div className="mt-5 grid gap-4 lg:grid-cols-3">
+        <Track outcome={result.standard} revealed={revealed} />
+        <Track outcome={result.design} revealed={revealed} />
+        <Track outcome={result.extras} revealed={revealed} />
       </div>
 
       <div className="mt-5 border-t border-edge pt-3">
@@ -91,16 +95,25 @@ export function SimulationTrack() {
   );
 }
 
+const LANE: Record<
+  SimOutcome["policy"],
+  { pill: string; tone: "red" | "pos" | "calm"; cost: string }
+> = {
+  standard: { pill: "Today", tone: "red", cost: "Cost of this policy: the customer, and the £41." },
+  design: { pill: "The claim", tone: "pos", cost: "Nothing given away. The fee stands, the date doesn't move." },
+  extras: { pill: "Optional", tone: "calm", cost: "Faster by a day, for an extension and a £12 refund after paying." },
+};
+
 function Track({
   outcome,
   revealed,
-  tone,
 }: {
   outcome: SimOutcome;
   revealed: number;
-  tone: "red" | "pos";
 }) {
-  const accent = tone === "pos" ? "text-pos" : "text-red-fg";
+  const lane = LANE[outcome.policy];
+  const tone = lane.tone;
+  const accent = tone === "pos" ? "text-pos" : tone === "calm" ? "text-calm" : "text-red-fg";
   const events = outcome.events.slice(0, revealed);
   const done = revealed >= outcome.events.length;
 
@@ -111,9 +124,7 @@ function Track({
     >
       <div className="flex items-center justify-between gap-3">
         <h3 className="font-semibold text-fg">{outcome.label}</h3>
-        <StatusPill tone={tone === "pos" ? "pos" : "red"}>
-          {outcome.policy === "clarity" ? "Clarity" : "Today"}
-        </StatusPill>
+        <StatusPill tone={tone}>{lane.pill}</StatusPill>
       </div>
 
       <ol className="mt-4 space-y-0">
@@ -138,6 +149,8 @@ function Track({
                     ? "bg-pos"
                     : e.kind === "support"
                       ? "bg-link"
+                      : e.kind === "extra"
+                        ? "bg-calm"
                       : e.kind === "harm"
                         ? "bg-red"
                         : e.kind === "pressure"
@@ -178,11 +191,18 @@ function Track({
             label="Fees charged"
             value={money(outcome.feesCharged)}
             good={outcome.feesCharged === 0}
+            neutral={outcome.policy === "design"}
           />
           <Outcome
-            label="Credit report"
+            label="Credit file"
             value={outcome.reportedToBureau ? "Reported — six years" : "Nothing reported"}
             good={!outcome.reportedToBureau}
+          />
+          <Outcome
+            label="Concessions"
+            value={outcome.concessions.length ? `${outcome.concessions.length} optional` : "None"}
+            good={outcome.concessions.length === 0}
+            neutral={outcome.policy === "standard"}
           />
           <Outcome
             label="Willingness to engage again"
@@ -193,11 +213,7 @@ function Track({
       ) : null}
 
       {done ? (
-        <p className={`mt-3 text-sm font-semibold ${accent}`}>
-          {outcome.policy === "clarity"
-            ? "Cost of this policy: the $29 fee we chose not to charge."
-            : "Cost of this policy: the customer, and the $41."}
-        </p>
+        <p className={`mt-3 text-sm font-semibold ${accent}`}>{lane.cost}</p>
       ) : null}
     </section>
   );
@@ -207,15 +223,21 @@ function Outcome({
   label,
   value,
   good,
+  neutral = false,
 }: {
   label: string;
   value: string;
   good: boolean;
+  neutral?: boolean;
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
       <dt className="text-fg-3">{label}</dt>
-      <dd className={`font-semibold ${good ? "text-pos" : "text-red-fg"}`}>{value}</dd>
+      <dd
+        className={`font-semibold ${neutral ? "text-fg-2" : good ? "text-pos" : "text-red-fg"}`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }

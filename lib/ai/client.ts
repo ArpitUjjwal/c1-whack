@@ -50,8 +50,8 @@ export async function checkCoachAvailability(): Promise<CoachAvailability> {
 }
 
 /** Instant, synchronous scoring. Always available. */
-export function analyseNow(text: string): PressureReport {
-  return analysePressure(text);
+export function analyseNow(text: string, locked: string[] = []): PressureReport {
+  return analysePressure(text, { locked });
 }
 
 /**
@@ -60,6 +60,7 @@ export function analyseNow(text: string): PressureReport {
  */
 export async function deepAnalyse(
   text: string,
+  locked: string[] = [],
   signal?: AbortSignal,
 ): Promise<PressureReport | null> {
   if (!text.trim()) return null;
@@ -67,7 +68,7 @@ export async function deepAnalyse(
     const res = await fetch("/api/coach/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, locked }),
       signal,
     });
     if (!res.ok) return null;

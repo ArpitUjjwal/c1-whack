@@ -6,9 +6,16 @@ A prototype for the Capital One "Make Credit Accessible" problem statement:
 helping customers with cognitive accessibility requirements — ADHD, anxiety,
 task avoidance — manage credit independently.
 
+> Nearly half of people who are behind on payments say they feel harassed (49%)
+> or overwhelmed (48%) by the volume of contact from their creditors.
+> — Money and Mental Health Policy Institute
+
 > Credit isn't inaccessible because information is missing. It's inaccessible
 > because the interface demands executive function the customer doesn't have in
 > that moment — and then the bank's own outreach spends what little is left.
+
+Set in the UK: Alex has a Capital One UK credit card (£41 past due) and a
+current account at another bank, linked over Open Banking.
 
 | Route | Surface |
 | --- | --- |
@@ -36,17 +43,25 @@ Open `http://localhost:3000/customer` and `http://localhost:3000/bank` in two
 `signals.ts`) — scores what the screen demands of working memory from the live
 DOM, watches how hard the customer is finding it, and offers Focus Mode above
 strain 45. Measured: load **29 → 19** on acceptance, under the 25 target.
+Strain **never leaves the customer's device**: the console sees screen load
+and Focus Mode state only, and Alex can switch the whole layer off.
 
 **Pressure Index** (`lib/engines/pressure.ts`) — scores every outgoing message
 *as the agent types it*, underlines the exact words doing harm with the reason
-and the points, and rewrites them. Measured: a standard collections sentence
-scores **100 → 0** with every factual claim intact.
+and the points, and rewrites them. Threats go; a real consequence stays, once,
+calmly, with its date. Measured: a standard collections sentence scores
+**100 → 0** and still tells Alex the date that keeps it off their credit file.
+Compliance wording can be locked so no rewrite can touch it, and a frequency
+guard checks every send against Alex's own contact preferences.
 
 **Silence Model** (`lib/engines/silence-model.ts`) — treats not-opening-the-app
 as information. Six features, every weight and contribution on screen, stated
-plainly as hand-tuned rather than trained. Feeds a deterministic 30-day
-two-policy simulation: standard cadence never resolves and reports to the
-bureau; Clarity resolves on day 4 with no fee.
+plainly as hand-tuned rather than trained. It outputs a *reach-out priority*
+and decides **how** to reach out (channel, tone, timing), never what to give
+away; it never feeds credit decisions. Feeds a deterministic 30-day
+three-lane simulation: the standard cadence never resolves and is reported;
+**Clarity's design alone** resolves on day 4 with nothing given away; optional
+concessions only make it a day faster.
 
 See **[ACCESSIBILITY.md](ACCESSIBILITY.md)** for the full treatment, including
 the ethical guardrails on the adaptive layer and the known limits.
@@ -82,7 +97,11 @@ rewrite.
 cp .env.example .env.local   # add ANTHROPIC_API_KEY, then restart
 ```
 
-Server-side only (`app/api/coach/*`); the key never reaches the browser. Every
+Server-side only (`app/api/coach/*`); the key never reaches the browser.
+
+> **Don't deploy publicly with `ANTHROPIC_API_KEY` set.** `/api/coach/*` has no
+> authentication, so anyone with the URL could spend your credits. Run the demo
+> locally, or deploy without the key — the local engine covers the whole demo. Every
 failure path — no key, rate limit, dropped connection, refusal — falls back
 silently to the local engine, and the UI badge says which produced the result.
 

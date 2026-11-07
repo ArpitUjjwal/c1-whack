@@ -92,7 +92,11 @@ export function BankConsole() {
         {/* Desktop-first: three columns on a wide screen, stacking below. */}
         <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)_minmax(0,1.1fr)]">
           <div className="space-y-4">
-            <CustomerLens telemetry={telemetry} online={customerOnline} />
+            <CustomerLens
+              telemetry={telemetry}
+              online={customerOnline}
+              adaptiveEnabled={state.ui.adaptiveEnabled}
+            />
             <LiveAccountPanel state={state} safe={safe} />
           </div>
 
@@ -102,12 +106,13 @@ export function BankConsole() {
           </div>
 
           <div ref={composerRef} className="space-y-4">
-            <PressureComposer key={seedLine ?? "composer"} state={state} onSend={sendNudge} />
+            <PressureComposer key={seedLine ?? "composer"} state={state} onSend={sendNudge} now={now} />
             <AgentScriptPanel script={script} onUseLine={setSeedLine} />
             <ActionPanel
               state={state}
               dispatch={dispatch}
               customerOnline={customerOnline}
+              now={now}
             />
           </div>
         </div>

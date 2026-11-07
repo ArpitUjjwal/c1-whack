@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/Button";
 import { LiveDot } from "@/components/ui/LiveDot";
 import { Panel } from "@/components/ui/Panel";
 import { StatusPill } from "@/components/ui/StatusPill";
-import type { AppState } from "@/lib/types";
+import { CREDIT_FILE_GENERAL } from "@/lib/compliance";
+import type { Action, AppState } from "@/lib/types";
+import { TrustPanel } from "./TrustPanel";
 
 /**
  * Where the customer's accessibility needs are declared — and the reason the
@@ -16,10 +18,12 @@ export function HelpPanel({
   state,
   agentOnline,
   onMessageAgent,
+  dispatch,
 }: {
   state: AppState;
   agentOnline: boolean;
   onMessageAgent: (text: string) => void;
+  dispatch: (action: Action) => void;
 }) {
   const [draft, setDraft] = useState("");
   const [sent, setSent] = useState(false);
@@ -55,6 +59,8 @@ export function HelpPanel({
           &ldquo;{state.customer.supportNote}&rdquo;
         </blockquote>
       </Panel>
+
+      <TrustPanel state={state} dispatch={dispatch} />
 
       <Panel as="article" className="p-5">
         <div className="flex items-center justify-between gap-3">
@@ -102,8 +108,8 @@ export function HelpPanel({
           <div>
             <dt className="font-medium text-fg">Past due</dt>
             <dd className="text-fg-2">
-              A payment arrived later than its date. It isn&apos;t on your credit
-              report until it&apos;s 30 days late.
+              A payment that hasn&apos;t arrived by its date.{" "}
+              {CREDIT_FILE_GENERAL}
             </dd>
           </div>
           <div>

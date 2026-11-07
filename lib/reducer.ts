@@ -64,14 +64,14 @@ export function reduce(state: AppState, action: Action): AppState {
     }
 
     case "PAY_CREDIT": {
-      const amount = Math.min(action.amount, state.checking.balance);
+      const amount = Math.min(action.amount, state.current.balance);
       const newCreditBalance = Math.max(0, state.credit.balance - amount);
       const clearedOverdue = amount >= state.credit.minimumDue;
 
       return next({
-        checking: {
-          ...state.checking,
-          balance: Math.round((state.checking.balance - amount) * 100) / 100,
+        current: {
+          ...state.current,
+          balance: Math.round((state.current.balance - amount) * 100) / 100,
         },
         credit: {
           ...state.credit,
@@ -107,8 +107,8 @@ export function reduce(state: AppState, action: Action): AppState {
         timeline: log(
           state,
           "customer",
-          "Turned on automatic minimum payments",
-          "Removes the need to remember the due date at all.",
+          "Set up a Direct Debit for the minimum",
+          "Removes the need to remember the payment date at all.",
         ),
       });
     }
@@ -124,6 +124,10 @@ export function reduce(state: AppState, action: Action): AppState {
             seen: false,
             dismissed: false,
           },
+        ],
+        contactLog: [
+          ...state.contactLog,
+          { channel: "in_app", at: Date.now(), by: "agent" },
         ],
         timeline: log(
           state,
@@ -179,7 +183,7 @@ export function reduce(state: AppState, action: Action): AppState {
           state,
           "customer",
           "Accepted the payment extension",
-          "No longer reported as past due. Pressure removed.",
+          "New payment date agreed. No extra fee for the extra time.",
         ),
       });
     }
@@ -199,9 +203,9 @@ export function reduce(state: AppState, action: Action): AppState {
     case "ACCEPT_SPLIT_PLAN": {
       const first = Math.round((state.credit.minimumDue / 3) * 100) / 100;
       return next({
-        checking: {
-          ...state.checking,
-          balance: Math.round((state.checking.balance - first) * 100) / 100,
+        current: {
+          ...state.current,
+          balance: Math.round((state.current.balance - first) * 100) / 100,
         },
         credit: {
           ...state.credit,
@@ -223,15 +227,48 @@ export function reduce(state: AppState, action: Action): AppState {
       });
     }
 
-    case "WAIVE_LATE_FEE": {
-      if (state.credit.lateFeeWaived) return state;
+    case "REFUND_LATE_FEE": {
+      // Goodwill follows action, never silence: only once the card is paid.
+      if (state.credit.lateFeeRefunded || state.credit.status !== "current") return state;
       return next({
-        credit: { ...state.credit, lateFeeWaived: true },
+        credit: { ...state.credit, lateFeeRefunded: true },
         timeline: log(
           state,
           "agent",
-          `Waived the ${money(state.credit.lateFee)} late fee`,
-          "One-time courtesy applied to the account.",
+          `Refunded the ${money(state.credit.lateFee)} late fee`,
+          "Once-a-year goodwill refund, applied after Alex paid.",
+        ),
+      });
+    }
+
+    case "SET_CONTACT_PREFERENCES": {
+      return next({
+        customer: { ...state.customer, contactPreferences: action.preferences },
+        timeline: log(
+          state,
+          "customer",
+          "Updated contact preferences",
+          "Alex's own rules for how and when we get in touch.",
+        ),
+      });
+    }
+
+    case "SET_ADAPTIVE": {
+      if (state.ui.adaptiveEnabled === action.on) return state;
+      return next({
+        ui: {
+          ...state.ui,
+          adaptiveEnabled: action.on,
+          // Turning the layer off also undoes anything it did.
+          focusMode: action.on ? state.ui.focusMode : false,
+        },
+        timeline: log(
+          state,
+          "customer",
+          action.on ? "Turned the adaptive screen on" : "Turned the adaptive screen off",
+          action.on
+            ? "The app may offer a simpler screen again."
+            : "Nothing is measured on Alex's phone. Focus Mode will not be offered.",
         ),
       });
     }
@@ -249,7 +286,7 @@ export function reduce(state: AppState, action: Action): AppState {
           state,
           "system",
           "Offered Focus Mode",
-          "Interaction strain crossed the threshold. The offer is advisory \u2014 Alex decides.",
+          "The app offered a simpler screen. Alex decides.",
         ),
       });
     }

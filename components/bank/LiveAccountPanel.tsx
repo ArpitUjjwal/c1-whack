@@ -22,7 +22,7 @@ export function LiveAccountPanel({
   state: AppState;
   safe: SafeToSpend;
 }) {
-  const { checking, credit, flags } = state;
+  const { current, credit, flags } = state;
   const utilisation = selectCreditUtilisation(state);
 
   const status = (() => {
@@ -69,13 +69,17 @@ export function LiveAccountPanel({
           {money(safe.available)}
         </motion.p>
         <p className="mt-1 text-xs text-fg-3">
-          {money(safe.balance)} in checking, less {money(safe.committed)} committed
+          {money(safe.balance)} in the linked current account, less {money(safe.committed)} committed
           over {safe.horizonDays} days
         </p>
       </div>
 
       <dl className="mt-4 space-y-3">
-        <Metric label={checking.nickname} sub="Checking ••••4417" value={money(checking.balance)} />
+        <Metric
+          label={current.nickname}
+          sub={`${current.provider} ••••${current.accountNumber.slice(-4)} · via ${current.linkedVia}`}
+          value={money(current.balance)}
+        />
         <div>
           <Metric
             label={credit.nickname}
@@ -101,14 +105,18 @@ export function LiveAccountPanel({
         />
         <Metric
           label="Late fee"
-          sub={credit.lateFeeWaived ? "Waived as a courtesy" : "Assessed, not yet waived"}
-          value={credit.lateFeeWaived ? "Waived" : money(credit.lateFee)}
+          sub={
+            credit.lateFeeRefunded
+              ? "Refunded after Alex paid (once a year)"
+              : "Charged. Refundable once a year, after payment"
+          }
+          value={credit.lateFeeRefunded ? "Refunded" : money(credit.lateFee)}
         />
       </dl>
 
       <div className="mt-4 flex flex-wrap gap-2 border-t border-edge pt-3">
         <StatusPill tone={flags.autopayEnabled ? "pos" : "neutral"}>
-          Autopay {flags.autopayEnabled ? "on" : "off"}
+          Direct Debit {flags.autopayEnabled ? "on" : "off"}
         </StatusPill>
         <StatusPill tone={flags.extensionAccepted ? "pos" : "neutral"}>
           Extension{" "}

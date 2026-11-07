@@ -10,10 +10,12 @@ import { analyseNow, checkCoachAvailability, deepAnalyse, rewrite } from "@/lib/
 import { useRealtimeSync } from "@/lib/realtime";
 import {
   BAND_COPY,
-  type FindingKind,
   type PressureReport,
   type PressureSpan,
+  type SpanKind,
 } from "@/lib/engines/pressure";
+import { LOCKED_SEGMENTS, payByDate } from "@/lib/compliance";
+import { FREQUENCY_EVIDENCE, checkContact, ordinal } from "@/lib/contact";
 import { money } from "@/lib/format";
 import type { AppState, Tone } from "@/lib/types";
 
@@ -27,16 +29,25 @@ import type { AppState, Tone } from "@/lib/types";
  *
  * Red is used here and in the logo, nowhere else in the product. It marks the
  * bank's own language — never the customer's money.
+ *
+ * Two guards sit beside the score. Locked segments carry compliance wording
+ * (the dated credit-file line, the free debt-advice signpost): they are kept
+ * outside the editable draft, so no rewrite — local or Claude — can reach
+ * them, and they are appended verbatim on send. And the frequency guard says
+ * which message this would be this week, against Alex's own limit.
  */
 
 /** How long the agent must pause before the deeper Claude pass runs. */
 const DEEP_DEBOUNCE_MS = 650;
 
-const SPAN_STYLE: Record<FindingKind, string> = {
+const SPAN_STYLE: Record<SpanKind, string> = {
   urgency: "bg-attn/25 border-b-2 border-attn",
   shame: "bg-red/25 border-b-2 border-red-fg",
   threat: "bg-red/30 border-b-2 border-red-fg",
   jargon: "bg-link/20 border-b-2 border-link",
+  consequence: "bg-attn/20 border-b-2 border-dashed border-attn",
+  allowed: "border-b-2 border-dotted border-pos",
+  locked: "",
   "long-sentence": "",
   grade: "",
   "multiple-asks": "",
@@ -46,9 +57,12 @@ const SPAN_STYLE: Record<FindingKind, string> = {
 export function PressureComposer({
   state,
   onSend,
+  now,
 }: {
   state: AppState;
   onSend: (title: string, body: string, tone: Tone) => void;
+  /** Slow-ticking clock from the store; nothing here reads the time in render. */
+  now: number;
 }) {
   const [title, setTitle] = useState("");
   const [draft, setDraft] = useState("");
@@ -64,20 +78,39 @@ export function PressureComposer({
     source: "local" | "claude";
   } | null>(null);
   const [confirmHarmful, setConfirmHarmful] = useState(false);
+  const [confirmContact, setConfirmContact] = useState(false);
+  /** Ids of locked segments attached to this message, in the order added. */
+  const [lockedIds, setLockedIds] = useState<string[]>([]);
+
+  const payBy = payByDate(state.credit);
+  const lockedTexts = useMemo(
+    () =>
+      lockedIds
+        .map((id) => LOCKED_SEGMENTS.find((seg) => seg.id === id))
+        .filter((seg): seg is (typeof LOCKED_SEGMENTS)[number] => Boolean(seg))
+        .map((seg) => seg.text({ payBy })),
+    [lockedIds, payBy],
+  );
+  /** What actually reaches Alex: the draft, then the locked wording verbatim. */
+  const fullText = [draft.trim(), ...lockedTexts].filter(Boolean).join(" ");
+  const contact = checkContact(state, now, new Date(now).getHours());
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
   const { onSignal } = useRealtimeSync();
 
-  /* Instant, synchronous, every keystroke. */
-  const localReport = useMemo(() => analyseNow(draft), [draft]);
+  /* Instant, synchronous, every keystroke. Scored as sent: draft + locked. */
+  const localReport = useMemo(
+    () => analyseNow(fullText, lockedTexts),
+    [fullText, lockedTexts],
+  );
 
   /*
     The report actually shown: Claude's, but only while it still describes the
     text on screen. Tying it to the draft means staleness is derived rather
     than cleared by a setState, so editing never shows a score for old text.
   */
-  const report = deep && deep.text === draft ? deep.report : localReport;
+  const report = deep && deep.text === fullText ? deep.report : localReport;
   const band = BAND_COPY[report.band];
 
   useEffect(() => {
@@ -96,15 +129,15 @@ export function PressureComposer({
 
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
-      const result = await deepAnalyse(draft, controller.signal);
-      if (result) setDeep({ text: draft, report: result });
+      const result = await deepAnalyse(fullText, lockedTexts, controller.signal);
+      if (result) setDeep({ text: fullText, report: result });
     }, DEEP_DEBOUNCE_MS);
 
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [draft, claudeAvailable]);
+  }, [fullText, lockedTexts, draft, claudeAvailable]);
 
   /* Keep the highlight layer aligned with the textarea while it scrolls. */
   const syncScroll = useCallback(() => {
@@ -117,29 +150,49 @@ export function PressureComposer({
     if (!draft.trim()) return;
     setRewriting(true);
     const before = report.score;
+    // Only the free draft is rewritten. Locked wording never leaves this
+    // component except verbatim, on send.
     const result = await rewrite(draft, {
       amount: money(state.credit.minimumDue),
       agentName: state.agentName,
+      payBy,
+      locked: lockedTexts,
     });
     setDraft(result.text);
-    setLastRewrite({ from: before, to: result.report.score, source: result.source });
+    // Score the rewrite as it will be sent — with the locked wording — so the
+    // before/after comparison is like-for-like with the meter.
+    const after = analyseNow(
+      [result.text.trim(), ...lockedTexts].filter(Boolean).join(" "),
+      lockedTexts,
+    ).score;
+    setLastRewrite({ from: before, to: after, source: result.source });
     setRewriting(false);
     setConfirmHarmful(false);
   };
 
-  const send = () => {
+  /**
+   * `fromDirector` is the Demo Director's send. A presenter cannot double-
+   * press a confirm mid-sentence, so it skips the contact-rule confirm — the
+   * breach is still on screen, and the harmful-score confirm still applies.
+   */
+  const send = (fromDirector = false) => {
     const t = title.trim() || "A note from your support team";
-    const b = draft.trim();
-    if (!b) return;
+    if (!draft.trim()) return;
     if (report.band === "harmful" && !confirmHarmful) {
       setConfirmHarmful(true);
       return;
     }
-    onSend(t, b, tone);
+    if (contact.breaches.length > 0 && !confirmContact && !fromDirector) {
+      setConfirmContact(true);
+      return;
+    }
+    onSend(t, fullText, tone);
     setTitle("");
     setDraft("");
+    setLockedIds([]);
     setLastRewrite(null);
     setConfirmHarmful(false);
+    setConfirmContact(false);
   };
 
   /*
@@ -150,7 +203,7 @@ export function PressureComposer({
   const handlersRef = useRef<{
     loadExample: (focusField?: boolean) => void;
     doRewrite: () => void;
-    send: () => void;
+    send: (fromDirector?: boolean) => void;
   }>({
     loadExample: () => {},
     doRewrite: () => {},
@@ -162,7 +215,7 @@ export function PressureComposer({
       if (signal.type !== "demo_action") return;
       if (signal.action === "load_bad_example") handlersRef.current.loadExample(false);
       if (signal.action === "rewrite_draft") handlersRef.current.doRewrite();
-      if (signal.action === "send_draft") handlersRef.current.send();
+      if (signal.action === "send_draft") handlersRef.current.send(true);
     });
   }, [onSignal]);
 
@@ -174,10 +227,12 @@ export function PressureComposer({
   const loadExample = (focusField = true) => {
     setTitle("Overdue payment");
     setDraft(
-      "You must pay the full balance immediately to avoid collections. Failure to do so will be reported to the credit bureaus.",
+      "You must pay the full balance immediately to avoid collections. Failure to do so will be reported to the credit reference agencies.",
     );
+    setLockedIds([]);
     setLastRewrite(null);
     setConfirmHarmful(false);
+    setConfirmContact(false);
     if (focusField) textareaRef.current?.focus();
   };
 
@@ -269,7 +324,10 @@ export function PressureComposer({
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl border border-transparent px-3 py-2.5 text-[0.9375rem] leading-relaxed whitespace-pre-wrap break-words text-transparent"
         >
-          {renderHighlights(draft, report.spans)}
+          {renderHighlights(
+            draft,
+            report.spans.filter((span) => span.end <= draft.length),
+          )}
         </div>
         <textarea
           id="nudge-body"
@@ -282,6 +340,51 @@ export function PressureComposer({
           placeholder="Nothing's wrong — I just wanted to make one thing easy."
           className="relative w-full resize-none rounded-xl border border-edge bg-transparent px-3 py-2.5 text-[0.9375rem] leading-relaxed text-fg caret-link placeholder:text-fg-3 focus:border-link"
         />
+      </div>
+
+      {/* ------------------------------------------------- locked wording -- */}
+      {lockedIds.length > 0 ? (
+        <ul className="mt-2 space-y-1.5" aria-label="Locked wording, sent verbatim">
+          {lockedIds.map((id) => {
+            const seg = LOCKED_SEGMENTS.find((s) => s.id === id);
+            if (!seg) return null;
+            return (
+              <li
+                key={id}
+                className="flex items-start justify-between gap-3 rounded-xl border border-calm/30 bg-calm-dim px-3 py-2"
+              >
+                <span className="min-w-0 text-[0.9375rem] text-fg">
+                  <span className="mr-1.5 text-xs font-semibold tracking-[0.1em] text-calm uppercase">
+                    Locked
+                  </span>
+                  {seg.text({ payBy })}
+                  <span className="block text-xs text-fg-3">{seg.why}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setLockedIds((ids) => ids.filter((x) => x !== id))}
+                  className="min-h-11 shrink-0 px-2 text-sm font-semibold text-fg-3 hover:text-fg"
+                  aria-label={`Remove ${seg.label}`}
+                >
+                  Remove
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-fg-3">Add required wording:</span>
+        {LOCKED_SEGMENTS.filter((seg) => !lockedIds.includes(seg.id)).map((seg) => (
+          <button
+            key={seg.id}
+            type="button"
+            onClick={() => setLockedIds((ids) => [...ids, seg.id])}
+            className="min-h-11 rounded-xl border border-edge bg-glass px-3 text-sm font-medium text-fg-2 hover:text-fg"
+          >
+            + {seg.label}
+          </button>
+        ))}
       </div>
 
       {/* ------------------------------------------------------- findings -- */}
@@ -361,6 +464,28 @@ export function PressureComposer({
         </div>
       </fieldset>
 
+      {/* ------------------------------------------------ frequency guard -- */}
+      <div className="mt-4 rounded-xl border border-edge bg-glass p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusPill tone={contact.overLimit ? "attn" : "link"}>
+            {ordinal(contact.nextOrdinal)} message this week
+          </StatusPill>
+          <span className="text-xs text-fg-3">
+            Alex&apos;s limit: {state.customer.contactPreferences.maxPerWeek} a week
+          </span>
+        </div>
+        {contact.breaches.length > 0 ? (
+          <ul className="mt-2 space-y-0.5 text-sm text-attn">
+            {contact.breaches.map((b) => (
+              <li key={b}>{b}</li>
+            ))}
+          </ul>
+        ) : null}
+        <p className="mt-2 text-xs text-fg-3">
+          Why it&apos;s counted: {FREQUENCY_EVIDENCE.text} ({FREQUENCY_EVIDENCE.source})
+        </p>
+      </div>
+
       {/* --------------------------------------------------------- actions -- */}
       <div className="mt-4 flex flex-wrap gap-2">
         <Button
@@ -374,19 +499,27 @@ export function PressureComposer({
         <Button
           variant={report.band === "harmful" ? "danger" : "pos"}
           size="md"
-          onClick={send}
+          onClick={() => send()}
           disabled={!draft.trim()}
         >
           {report.band === "harmful"
             ? confirmHarmful
               ? "Send anyway — I'm sure"
               : "Send anyway"
-            : "Send to Alex's phone"}
+            : confirmContact
+              ? "Send anyway — break Alex's rule"
+              : "Send to Alex's phone"}
         </Button>
         <Button variant="ghost" size="md" onClick={() => loadExample(true)}>
           Load a bad example
         </Button>
       </div>
+
+      {confirmContact && !confirmHarmful ? (
+        <p role="alert" className="mt-2 text-sm font-semibold text-attn">
+          This breaks a rule Alex set on a calm day. Press again to send anyway.
+        </p>
+      ) : null}
 
       {confirmHarmful ? (
         <p role="alert" className="mt-2 text-sm font-semibold text-red-fg">

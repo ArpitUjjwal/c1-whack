@@ -42,7 +42,7 @@ export function ActivityTimeline({
       {/* The signal the rest of the console is built around. */}
       <div className="mt-3 rounded-xl border border-attn/25 bg-attn-dim p-3.5">
         <p className="text-xs font-semibold tracking-[0.12em] text-attn uppercase">
-          Avoidance pattern detected
+          Long quiet spell
         </p>
         <p className="mt-1.5 text-[0.9375rem] font-medium text-fg">
           No app activity for {state.customer.daysSinceLastOpen} days

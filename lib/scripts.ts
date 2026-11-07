@@ -1,4 +1,6 @@
 import type { AppState } from "./types";
+import { creditFileLine, payByDate } from "./compliance";
+import { CHANNEL_LABEL, hourLabel } from "./contact";
 import { longDate, money } from "./format";
 
 export interface AgentScript {
@@ -24,6 +26,11 @@ export interface AgentScript {
  * Every variant follows the same rules, taken from Alex's declared profile:
  * short sentences, one instruction at a time, no urgency language, no
  * collections vocabulary, and the consequence of each option stated plainly.
+ *
+ * Two things the script will not do. It will not lead with a concession —
+ * the fee refund is offered only after Alex has paid, once a year — and it
+ * will not hide the one real consequence: it is said once, calmly, with the
+ * date, because removing it would mislead.
  */
 export function buildAgentScript(
   state: AppState,
@@ -32,15 +39,24 @@ export function buildAgentScript(
   const { credit, flags, customer } = state;
   const amount = money(credit.minimumDue);
   const split = money(Math.round((credit.minimumDue / 3) * 100) / 100);
+  const fee = money(credit.lateFee);
+  const prefs = customer.contactPreferences;
+  const refundLine = credit.lateFeeRefunded
+    ? `“I've refunded the ${fee} late fee, since you've paid. Nothing else changes.”`
+    : `“And because you've paid, I can refund the ${fee} late fee. We do that once a year.”`;
 
   const universalAvoid = [
     {
       phrase: "“You need to…” / “You must…”",
-      why: "Pressure is what triggered the 14-day avoidance in the first place.",
+      why: "Pressure is what preceded the 14 quiet days in the first place.",
     },
     {
       phrase: "“Delinquent”, “default”, “collections”",
       why: "Alex asked for plain language. These words escalate without informing.",
+    },
+    {
+      phrase: "Leading with a fee refund",
+      why: "Goodwill follows action. Offered before paying, it rewards going quiet.",
     },
     {
       phrase: "Stacking options: “You can do A, or B, or C…”",
@@ -55,7 +71,8 @@ export function buildAgentScript(
       opener: `“All done, Alex. The card's up to date, and from now on the minimum goes out by itself.”`,
       lines: [
         "“You don't have to remember the date any more. If you ever want it off, it's one tap.”",
-        "“Nothing about this went on your credit report.”",
+        "“It was paid well before anything is reported to the credit reference agencies.”",
+        refundLine,
         "“Is there anything else you'd like me to take off your plate while I'm here?”",
       ],
       avoid: universalAvoid,
@@ -68,12 +85,15 @@ export function buildAgentScript(
       situation: "Alex just cleared the past-due amount, unassisted.",
       opener: `“That's it — it's done. The card's up to date.”`,
       lines: [
-        "“Nothing was reported to the credit bureaus. This never left Capital One.”",
+        "“It's paid well before anything is reported to the credit reference agencies.”",
         "“Your safe-to-spend didn't move, because that money was already set aside for you.”",
-        "“One optional thing, and then I'll let you go: I can set the minimum to pay itself each month.”",
+        refundLine,
+        "“One optional thing, and then I'll let you go: I can set up a Direct Debit so the minimum pays itself each month.”",
       ],
       avoid: universalAvoid,
-      nextStep: "Offer automatic minimum payments once, then close the contact.",
+      nextStep: credit.lateFeeRefunded
+        ? "Offer the Direct Debit once, then close the contact."
+        : `Optional: refund the ${fee} fee now Alex has paid (once a year). Offer the Direct Debit once, then close.`,
     };
   }
 
@@ -83,7 +103,7 @@ export function buildAgentScript(
       situation: `Extension accepted. New date: ${longDate(credit.dueDate)}.`,
       opener: `“You're set. Nothing's due until ${longDate(credit.dueDate)}.”`,
       lines: [
-        "“Nothing is late, and there's no fee.”",
+        "“There's no extra fee for the extra time.”",
         "“You'll get one gentle reminder two days before. Nothing in between.”",
         "“You don't need to do anything today.”",
       ],
@@ -114,7 +134,7 @@ export function buildAgentScript(
       lines: [
         `“It moves the date to ${
           credit.extendedDueDate ? longDate(credit.extendedDueDate) : "two weeks out"
-        }. No fee, nothing reported late.”`,
+        }. No extra fee for the extra time.”`,
         "“Take it whenever. It'll still be there tomorrow.”",
         "“I'll stay quiet unless you want me.”",
       ],
@@ -150,21 +170,20 @@ export function buildAgentScript(
       }.`,
       opener: `“Hi Alex, it's ${state.agentName} at Capital One. You're not in any trouble — I just wanted to make one thing easy.”`,
       lines: [
-        `“There's ${amount} on the Quicksilver card that slipped past its date. That's the whole of it.”`,
+        `“There's ${amount} on the ${credit.nickname} that slipped past its date. That's the whole of it.”`,
+        `“${creditFileLine(payByDate(credit))}”`,
         `“Paying it won't change your safe-to-spend number — we'd already set that ${amount} aside.”`,
         "“There's a button in your app that does it in one tap. Want me to wait while you look?”",
-        `“And the ${money(credit.lateFee)} fee — I can take that off right now, whatever you decide to do.”`,
       ],
       avoid: [
         ...universalAvoid,
         {
           phrase: "Mentioning the 14-day gap",
-          why: "Naming the avoidance makes it a thing to be ashamed of. Alex knows.",
+          why: "Naming the gap makes it a thing to be ashamed of. Alex knows.",
         },
       ],
-      nextStep: credit.lateFeeWaived
-        ? "Fee already waived — say so, then go quiet and let Alex act."
-        : "Waive the late fee now, unprompted. It costs $29 and buys the whole conversation.",
+      nextStep:
+        "Say the one thing, then go quiet and let Alex act. Don't offer anything yet — the app already makes it one tap.",
     };
   }
 
@@ -174,7 +193,7 @@ export function buildAgentScript(
     opener: `“Hi Alex — ${state.agentName} at Capital One. Nothing's wrong, and you don't need to call me back.”`,
     lines: [
       `“There's ${amount} sitting on your card. That's all it is.”`,
-      "“I've already taken the late fee off. You don't owe anything extra.”",
+      `“${creditFileLine(payByDate(credit))}”`,
       "“When you open the app, there's one button at the top that handles it. Nothing else to read.”",
       "“If that amount doesn't work this month, tell me and I'll move the date. No explanation needed.”",
     ],
@@ -186,10 +205,9 @@ export function buildAgentScript(
       },
       {
         phrase: "Any mention of a deadline or final notice",
-        why: "Alex's profile flags avoidance. Urgency reliably produces another 14 days of silence.",
+        why: "Alex told us money tasks are hard to start. Urgency reliably produces another 14 days of silence.",
       },
     ],
-    nextStep:
-      "Send one gentle check-in nudge. Then wait — do not send a second message today.",
+    nextStep: `${CHANNEL_LABEL[prefs.channel]}, once — Alex's chosen channel. Not between ${hourLabel(prefs.quietHours.start)} and ${hourLabel(prefs.quietHours.end)}. Then wait; no second message today.`,
   };
 }

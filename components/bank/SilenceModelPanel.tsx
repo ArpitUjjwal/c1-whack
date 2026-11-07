@@ -5,24 +5,28 @@ import { Meter } from "@/components/ui/Meter";
 import { Panel } from "@/components/ui/Panel";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { Disclosure } from "@/components/ui/Disclosure";
-import { RISK_BAND_COPY, type SilenceReading } from "@/lib/engines/silence-model";
+import { PRIORITY_COPY, type SilenceReading } from "@/lib/engines/silence-model";
 
 /**
  * The Silence Model, with its working shown.
  *
  * Every feature, its weight, and its individual contribution are on screen,
  * and the panel states plainly that the weights are hand-tuned rather than
- * learned. A console that says "risk: 57" and nothing else asks an agent to
+ * learned. The score is a reach-out *priority*, shown in calm colours, and
+ * the panel says on screen what it may never be used for — so a customer's
+ * own disclosure can never read as a mark against them.
+ *
+ * A console that says "57" and nothing else asks an agent to
  * trust it; this one asks them to check it, and lets them disagree with a
  * specific number rather than with the whole idea.
  */
 export function SilenceModelPanel({ reading }: { reading: SilenceReading }) {
   const [showWeights, setShowWeights] = useState(false);
-  const band = RISK_BAND_COPY[reading.band];
+  const band = PRIORITY_COPY[reading.band];
 
   return (
     <Panel
-      bloom={reading.band === "low" ? "pos" : "attn"}
+      bloom="calm"
       className="p-5"
       aria-labelledby="silence-heading"
     >
@@ -30,32 +34,28 @@ export function SilenceModelPanel({ reading }: { reading: SilenceReading }) {
         <h2 id="silence-heading" className="font-semibold text-fg">
           Silence Model
         </h2>
-        <StatusPill tone={band.tone === "pos" ? "pos" : band.tone === "attn" ? "attn" : "red"}>
-          {band.label}
-        </StatusPill>
+        <StatusPill tone={band.tone}>{band.label}</StatusPill>
       </div>
       <p className="mt-1 text-sm text-fg-3">
         Reads not-opening-the-app as information, rather than as the absence of it.
       </p>
+      <p className="mt-2 rounded-xl border border-calm/25 bg-calm-dim px-3 py-2 text-sm text-fg-2">
+        Decides who we reach out to first, and how. It never feeds credit
+        decisions, limits, fees or escalation.
+      </p>
 
       <div className="mt-4 flex items-end justify-between gap-4">
         <div>
-          <p
-            className={`display tnum text-[2.75rem] ${
-              band.tone === "pos" ? "text-pos" : band.tone === "attn" ? "text-attn" : "text-red-fg"
-            }`}
-          >
-            {reading.score}
-          </p>
-          <p className="text-xs text-fg-3">disengagement risk, 0–100</p>
+          <p className="display tnum text-[2.75rem] text-calm">{reading.score}</p>
+          <p className="text-xs text-fg-3">reach-out priority, 0–100</p>
         </div>
       </div>
 
       <Meter
         className="mt-3"
         value={reading.score}
-        tone={band.tone === "pos" ? "pos" : band.tone === "attn" ? "attn" : "red"}
-        label="Disengagement risk"
+        tone="calm"
+        label="Reach-out priority"
         valueText={`${reading.score} of 100 — ${band.label}`}
         height="lg"
       />
@@ -139,7 +139,7 @@ export function SilenceModelPanel({ reading }: { reading: SilenceReading }) {
       {/* ------------------------------------------------- recommendation -- */}
       <div className="mt-5 rounded-xl border border-link/25 bg-link-dim p-3.5">
         <p className="text-xs font-semibold tracking-[0.12em] text-link uppercase">
-          Recommended next step
+          How to reach out
         </p>
         <p className="mt-1.5 text-[0.9375rem] font-medium text-fg">
           {reading.recommendation}

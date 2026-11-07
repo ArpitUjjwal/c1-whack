@@ -5,6 +5,13 @@
  * A conventional arrears queue records what the customer did; the thing that
  * actually predicts the next 30 days on this file is what they didn't do.
  *
+ * What it decides, and what it is never allowed to decide: the output is a
+ * reach-out *priority* — who to contact first, on which channel, in what tone
+ * and at what time. It never decides what to give away (fees, extensions),
+ * and it never feeds credit decisions, limits or collections escalation.
+ * Rewarding silence with a concession would teach the wrong lesson; the
+ * model's job is to make the next contact land, not to buy it.
+ *
  * This is an illustrative model with hand-tuned weights. It is not trained on
  * anything, and the UI says so in those words. That is deliberate: a console
  * that shows its six features, their weights and their individual
@@ -12,6 +19,7 @@
  * than a black box with a better-sounding provenance.
  */
 
+import { CHANNEL_LABEL, hourLabel } from "../contact";
 import type { AppState } from "../types";
 
 export interface RiskFeature {
@@ -28,11 +36,12 @@ export interface RiskFeature {
   why: string;
 }
 
-export type RiskBand = "low" | "elevated" | "high" | "severe";
+export type PriorityBand = "routine" | "soon" | "today" | "first";
 
 export interface SilenceReading {
+  /** Reach-out priority, 0–100. Higher means "contact sooner, more gently". */
   score: number;
-  band: RiskBand;
+  band: PriorityBand;
   features: RiskFeature[];
   channels: ChannelPrediction[];
   /** The single intervention the model recommends next. */
@@ -48,21 +57,22 @@ export interface ChannelPrediction {
   factors: { label: string; delta: number }[];
 }
 
-export function bandForRisk(score: number): RiskBand {
-  if (score < 25) return "low";
-  if (score < 50) return "elevated";
-  if (score < 75) return "high";
-  return "severe";
+export function bandForPriority(score: number): PriorityBand {
+  if (score < 25) return "routine";
+  if (score < 50) return "soon";
+  if (score < 75) return "today";
+  return "first";
 }
 
-export const RISK_BAND_COPY: Record<
-  RiskBand,
-  { label: string; tone: "pos" | "attn" | "red" }
-> = {
-  low: { label: "Low", tone: "pos" },
-  elevated: { label: "Elevated", tone: "attn" },
-  high: { label: "High", tone: "red" },
-  severe: { label: "Severe", tone: "red" },
+/**
+ * Calm colours only. This is a support queue, not a risk flag, and a
+ * customer's own disclosure must never turn anything on this screen red.
+ */
+export const PRIORITY_COPY: Record<PriorityBand, { label: string; tone: "calm" | "link" }> = {
+  routine: { label: "Routine", tone: "link" },
+  soon: { label: "Reach out soon", tone: "link" },
+  today: { label: "Reach out today", tone: "calm" },
+  first: { label: "Reach out first", tone: "calm" },
 };
 
 /** Normalise to 0–1 with a ceiling, so one extreme feature cannot dominate. */
@@ -81,6 +91,9 @@ export function runSilenceModel(state: AppState): SilenceReading {
     ? 3
     : 0;
   const priorEpisodes = 2; // From the (fictional) 24-month history.
+  const declaredHardToStart = customer.cognitiveProfile.some((p) =>
+    /hard to start/i.test(p),
+  );
   const timingVariance = 0.62; // Std dev of days-from-due over 12 payments.
 
   const features: RiskFeature[] = [
@@ -113,7 +126,7 @@ export function runSilenceModel(state: AppState): SilenceReading {
     },
     {
       id: "episodes",
-      label: "Prior avoidance episodes",
+      label: "Earlier long quiet spells",
       raw: `${priorEpisodes} in 24 months`,
       normalised: cap(priorEpisodes, 4),
       weight: 15,
@@ -131,26 +144,26 @@ export function runSilenceModel(state: AppState): SilenceReading {
     },
     {
       id: "declared",
-      label: "Self-declared avoidance",
-      raw: customer.cognitiveProfile.some((p) => /avoidance/i.test(p)) ? "Yes" : "No",
-      normalised: customer.cognitiveProfile.some((p) => /avoidance/i.test(p)) ? 1 : 0,
+      label: "Told us money tasks are hard to start",
+      raw: declaredHardToStart ? "Yes" : "No",
+      normalised: declaredHardToStart ? 1 : 0,
       weight: 10,
       contribution: 0,
-      why: "Alex told us this directly. The model is required to listen to it.",
+      why: "Alex told us directly. It moves Alex up the support list. Nothing else.",
     },
   ].map((f) => ({ ...f, contribution: Math.round(f.normalised * f.weight * 10) / 10 }));
 
   const score = Math.round(features.reduce((sum, f) => sum + f.contribution, 0));
-  const band = bandForRisk(score);
+  const band = bandForPriority(score);
 
   const channels = predictChannels({
-    score,
     unopened,
-    declaredAvoidance: features[5].normalised === 1,
+    declaredHardToStart,
+    preferred: customer.contactPreferences.channel,
     inApp: customer.openedAppToday,
   });
 
-  const recommendation = recommend(state, band, flags);
+  const recommendation = recommend(state, channels, flags);
 
   return { score, band, features, channels, recommendation };
 }
@@ -161,11 +174,14 @@ export function runSilenceModel(state: AppState): SilenceReading {
  * disagree with a specific one.
  */
 function predictChannels(input: {
-  score: number;
   unopened: number;
-  declaredAvoidance: boolean;
+  declaredHardToStart: boolean;
+  preferred: AppState["customer"]["contactPreferences"]["channel"];
   inApp: boolean;
 }): ChannelPrediction[] {
+  const chosen = (id: string) =>
+    id === input.preferred ? [{ label: "The channel Alex chose", delta: 0.06 }] : [];
+
   const build = (
     id: string,
     label: string,
@@ -180,46 +196,59 @@ function predictChannels(input: {
   };
 
   return [
-    build("inapp", "Gentle in-app nudge", 0.52, [
+    build("in_app", "Gentle in-app nudge", 0.52, [
       ...(input.inApp ? [{ label: "Customer is in the app now", delta: 0.3 }] : []),
       { label: "No pressure language", delta: 0.08 },
-      ...(input.declaredAvoidance ? [{ label: "Matches declared preference", delta: 0.06 }] : []),
+      ...chosen("in_app"),
     ]),
     build("email", "Another email reminder", 0.35, [
       { label: `${input.unopened} previous emails unopened`, delta: -0.22 },
       { label: "Channel already shown to fail here", delta: -0.08 },
+      ...chosen("email"),
     ]),
-    build("call", "Outbound phone call", 0.3, [
-      ...(input.declaredAvoidance
-        ? [{ label: "Declared avoidance — calls raise the cost of engaging", delta: -0.17 }]
+    build("phone", "Outbound phone call", 0.3, [
+      ...(input.declaredHardToStart
+        ? [{ label: "A call raises the cost of starting", delta: -0.17 }]
         : []),
       { label: "No appointment agreed", delta: -0.06 },
+      ...chosen("phone"),
     ]),
     build("letter", "Posted letter", 0.14, [
       { label: "Slow, and arrives without context", delta: -0.04 },
+      ...chosen("letter"),
     ]),
   ].sort((a, b) => b.probability - a.probability);
 }
 
+/**
+ * How to reach out — channel, tone, timing. Never what to give away: there is
+ * deliberately no branch here that recommends a fee refund or an extension.
+ */
 function recommend(
   state: AppState,
-  band: RiskBand,
+  channels: ChannelPrediction[],
   flags: AppState["flags"],
 ): string {
+  const prefs = state.customer.contactPreferences;
   if (state.credit.status === "current") {
-    return "Nothing outstanding. Offer automatic minimum payments once, then close the contact.";
+    return "Nothing outstanding. Offer a Direct Debit for the minimum once, then close the contact.";
   }
   if (state.credit.status === "extended" || state.credit.status === "split_plan") {
     return "An arrangement is in place. Take no further action — a check-in now reads as chasing.";
   }
-  if (!state.credit.lateFeeWaived) {
-    return "Waive the late fee first, unprompted. It is the cheapest trust you will ever buy on this file.";
-  }
   if (flags.extensionOffered && !flags.extensionAccepted) {
     return "An offer is already open. Do not send a second message today — wait.";
   }
-  if (band === "severe" || band === "high") {
-    return "One gentle in-app nudge. It is the only channel the model gives better-than-even odds.";
-  }
-  return "Low pressure, single action, then stop.";
+
+  // Alex's own choice outranks the model's odds.
+  const best =
+    channels.find((c) => c.id === prefs.channel) ?? channels[0];
+  const odds = Math.round(best.probability * 100);
+  const email = channels.find((c) => c.id === "email");
+  const notEmail =
+    best.id !== "email" && email
+      ? ` Not a fourth email (${Math.round(email.probability * 100)}%).`
+      : "";
+
+  return `${CHANNEL_LABEL[best.id as keyof typeof CHANNEL_LABEL] ?? best.label}, once (${odds}% modelled).${notEmail} Calm, one action, no deadline. Not between ${hourLabel(prefs.quietHours.start)} and ${hourLabel(prefs.quietHours.end)}. Then wait 48 hours.`;
 }

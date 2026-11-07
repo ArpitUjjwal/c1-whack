@@ -16,15 +16,22 @@ export type Actor = "customer" | "agent" | "system";
 /** Emotional register of a message shown to the customer. Never "danger". */
 export type Tone = "calm" | "warm" | "celebrate";
 
-export interface CheckingAccount {
+/**
+ * Alex's everyday account. Capital One UK only offers credit cards, so this is
+ * a current account at another bank, linked read-only over Open Banking. It
+ * is what Safe-to-Spend reads and what a card payment is made from.
+ */
+export interface CurrentAccount {
   id: string;
   nickname: string;
-  /** Cents are avoided on purpose: plain dollars keep the demo numbers legible. */
+  /** The other bank. Fictional. */
+  provider: string;
+  linkedVia: "Open Banking";
   balance: number;
   /** Hidden behind progressive disclosure — jargon stays out of the default view. */
-  routingNumber: string;
+  sortCode: string;
   accountNumber: string;
-  type: "Checking";
+  type: "Current account";
 }
 
 export type CreditStatus =
@@ -49,7 +56,11 @@ export interface CreditAccount {
   daysOverdue: number;
   status: CreditStatus;
   lateFee: number;
-  lateFeeWaived: boolean;
+  /**
+   * Goodwill is conditional on action: the fee can be refunded once a year,
+   * after the customer has paid. Going quiet never earns it.
+   */
+  lateFeeRefunded: boolean;
   /** ISO date the payment is now due, when an extension has been granted. */
   extendedDueDate: string | null;
   apr: number;
@@ -111,6 +122,32 @@ export interface CustomerProfile {
   openedAppToday: boolean;
   /** Free-text context the customer chose to share with support. */
   supportNote: string;
+  /** Rules Alex set on a calm day for how we may contact them. */
+  contactPreferences: ContactPreferences;
+}
+
+export type ContactChannel = "in_app" | "email" | "phone" | "letter";
+
+/**
+ * Consent-based contact rules, in the spirit of an Advance Choice Document:
+ * set by the customer when things are fine, honoured when they are not. The
+ * console shows them and warns on a breach; it never infers them.
+ */
+export interface ContactPreferences {
+  channel: ContactChannel;
+  /** At most this many messages in any rolling seven days. */
+  maxPerWeek: number;
+  /** Local hours, 0–23. No contact from `start` until `end`. */
+  quietHours: { start: number; end: number };
+  /** ISO date the customer set these. */
+  setOn: string;
+}
+
+/** One contact made with the customer, on any channel. */
+export interface ContactRecord {
+  channel: ContactChannel;
+  at: number;
+  by: Actor;
 }
 
 export interface Flags {
@@ -139,6 +176,11 @@ export interface UiState {
   focusDeclined: boolean;
   /** How many times Focus Mode has been offered this session. */
   focusOffers: number;
+  /**
+   * The customer's switch for the whole adaptive layer. Off means nothing is
+   * measured, nothing is published, and Focus Mode is never offered.
+   */
+  adaptiveEnabled: boolean;
 }
 
 /** Demo Director position. Shared so both windows show the same beat. */
@@ -155,12 +197,17 @@ export interface DemoState {
  * are dropped when the tab goes quiet, exactly like presence.
  */
 export interface Telemetry {
-  /** Cognitive load of the screen currently rendered. */
+  /** Cognitive load of the screen currently rendered — a property of the screen. */
   load: number;
   loadBand: string;
-  /** Interaction strain derived from how the customer is behaving. */
-  strain: number;
-  strainBand: string;
+  /**
+   * Interaction strain is a reading about the person, not the screen, so it
+   * never leaves the customer's device. These fields exist only on the
+   * customer tab's own copy and are never published to another window.
+   */
+  strain?: number;
+  strainBand?: string;
+  /** Alex's own choice, so the agent can see it. */
   focusMode: boolean;
   view: string;
   at: number;
@@ -184,11 +231,13 @@ export interface AppState {
   /** Monotonic revision. Receivers only accept a state with a higher `rev`. */
   rev: number;
   customer: CustomerProfile;
-  checking: CheckingAccount;
+  current: CurrentAccount;
   credit: CreditAccount;
   bills: Bill[];
   nudges: Nudge[];
   timeline: TimelineEvent[];
+  /** Every contact made, on every channel. Drives the frequency guard. */
+  contactLog: ContactRecord[];
   flags: Flags;
   ui: UiState;
   demo: DemoState;
@@ -219,7 +268,9 @@ export type Action =
   | { type: "ACCEPT_EXTENSION" }
   | { type: "OFFER_SPLIT_PLAN" }
   | { type: "ACCEPT_SPLIT_PLAN" }
-  | { type: "WAIVE_LATE_FEE" }
+  | { type: "REFUND_LATE_FEE" }
+  | { type: "SET_CONTACT_PREFERENCES"; preferences: ContactPreferences }
+  | { type: "SET_ADAPTIVE"; on: boolean }
   | { type: "AGENT_NOTE"; text: string }
   | { type: "SET_FOCUS_MODE"; on: boolean }
   | { type: "DECLINE_FOCUS" }

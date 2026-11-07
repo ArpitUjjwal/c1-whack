@@ -8,7 +8,9 @@
  * Three rules this is built under:
  *
  *  1. Nothing identifying is collected. Timestamps of gesture *kinds*, in
- *     memory, in the tab. Nothing is persisted and nothing leaves the device.
+ *     memory, in the tab. Nothing is persisted, and the strain reading never
+ *     leaves the device: the agent console receives the screen's load and
+ *     Focus Mode state, never this. (See `useCognitiveMonitor`.)
  *  2. Every signal decays. A moment of confusion two minutes ago is not
  *     evidence about now, so each window is short and rolling.
  *  3. The output is advisory. It can offer to simplify the screen; it can

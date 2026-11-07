@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { measureLoad } from "./engines/cognitive-load";
-import { SignalCollector } from "./engines/signals";
+import { SignalCollector, type StrainReading } from "./engines/signals";
 import { useRealtimeSync } from "./realtime";
 
 /** How often the screen is re-measured. Slow enough to be free, fast enough to feel live. */
@@ -13,6 +13,14 @@ const FOCUSABLE =
 
 /**
  * Drives the Cognitive Load Meter and the strain estimate.
+ *
+ * What crosses to the other window, and what does not:
+ *  · Published: the screen's cognitive load (a property of the screen), the
+ *    current view, and whether Focus Mode is on (Alex's own choice).
+ *  · Never published: interaction strain. It is a reading about the person,
+ *    so it stays in this tab — returned to the caller and nowhere else. It is
+ *    also left out of the publish fingerprint, so not even the *timing* of a
+ *    publish can reveal that strain moved.
  *
  * Everything here runs from DOM listeners and a timer — never during render —
  * which is both correct React and a hard requirement of this project's build:
@@ -43,6 +51,9 @@ export function useCognitiveMonitor({
   */
   const [collector] = useState(() => new SignalCollector());
 
+  /* Local only. Set from the sampling timer, never during render. */
+  const [strain, setStrain] = useState<StrainReading | null>(null);
+
   // Latest values, so the sampling timer never closes over a stale render.
   // Written from an effect — assigning to a ref during render is not allowed.
   const metaRef = useRef({ daysSinceLastOpen, focusMode, view });
@@ -54,6 +65,7 @@ export function useCognitiveMonitor({
     if (!enabled) return;
 
     const root = rootRef.current;
+    let lastStrain = -1;
     collector.start(Date.now());
 
     /* ------------------------------------------------------- listeners -- */
@@ -106,16 +118,20 @@ export function useCognitiveMonitor({
         hour: new Date().getHours(),
       });
 
+      if (strain.score !== lastStrain) {
+        lastStrain = strain.score;
+        setStrain(strain);
+      }
+
       // Only publish on a real change, so a quiet screen costs nothing.
-      const fingerprint = `${load.score}|${strain.score}|${meta.focusMode}|${meta.view}`;
+      // Strain is deliberately absent from both the fingerprint and the payload.
+      const fingerprint = `${load.score}|${meta.focusMode}|${meta.view}`;
       if (fingerprint === lastPublished) return;
       lastPublished = fingerprint;
 
       publishTelemetry({
         load: load.score,
         loadBand: load.band,
-        strain: strain.score,
-        strainBand: strain.band,
         focusMode: meta.focusMode,
         view: meta.view,
         at: now,
@@ -135,7 +151,7 @@ export function useCognitiveMonitor({
     };
   }, [enabled, rootRef, publishTelemetry, onSignal, collector]);
 
-  return collector;
+  return { collector, strain: enabled ? strain : null };
 }
 
 /** Read the current strain without waiting for the next publish. */

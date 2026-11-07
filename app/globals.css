@@ -1,0 +1,270 @@
+@import "tailwindcss";
+
+/*
+  Clarity — design tokens.
+
+  Dark-first "calm futurism". Depth comes from layered translucency, hairline
+  edges and soft radial glow rather than drop shadows, so the surface reads as
+  glass over a deep field instead of cards on paper.
+
+  Every text token below is pinned to a measured contrast ratio against the
+  canvas, and the floor is 4.5:1. The Proof Layer re-measures these at runtime
+  from the live DOM, so the numbers in these comments are checkable rather than
+  claimed.
+
+  Capital One red is deliberately scarce: it appears in the logo and on the
+  Pressure Index, and nowhere else. Red never marks the customer's own money —
+  only the bank's own harmful language.
+*/
+@theme {
+  /* ---- Field -------------------------------------------------------- */
+  --color-void: #06090f;
+  --color-deep: #0a0f18;
+  --color-abyss: #03050a;
+
+  /* Translucent surfaces, composited over the field. */
+  --color-glass: rgba(255, 255, 255, 0.04);
+  --color-glass-2: rgba(255, 255, 255, 0.07);
+  --color-glass-3: rgba(255, 255, 255, 0.11);
+  --color-edge: rgba(255, 255, 255, 0.09);
+  --color-edge-2: rgba(255, 255, 255, 0.16);
+
+  /* ---- Text --------------------------------------------------------- */
+  --color-fg: #f2f6fa; /* 18.1:1 on --color-void */
+  --color-fg-2: #a8b7c7; /* 9.8:1 */
+  --color-fg-3: #7d8fa3; /* 6.0:1 — the floor, never go below */
+
+  /* ---- Semantic ----------------------------------------------------- */
+  --color-pos: #3ddc97; /* 11.3:1 — resolved, safe, caught up */
+  --color-pos-dim: rgba(61, 220, 151, 0.14);
+  --color-attn: #f0a93b; /* 9.9:1 — needs a look, never alarm */
+  --color-attn-dim: rgba(240, 169, 59, 0.14);
+  --color-link: #4f9cf9; /* 7.1:1 — interactive */
+  --color-link-dim: rgba(79, 156, 249, 0.14);
+  --color-calm: #9d8cff; /* 7.3:1 — agent presence, gentle */
+  --color-calm-dim: rgba(157, 140, 255, 0.14);
+
+  /* Brand red. 3.7:1 on the canvas — fails text contrast, so it is used only
+     as a fill or indicator with white on top (white on red is 5.5:1).
+     --color-red-fg is the paired text red at 7.2:1. */
+  --color-red: #cc2427;
+  --color-red-fg: #ff6b6b;
+  --color-red-dim: rgba(204, 36, 39, 0.16);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-xl2: 1.25rem;
+  --radius-xl3: 1.75rem;
+}
+
+/* --------------------------------------------------------------- base ---- */
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--color-void);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+  A faint noise field. Flat dark surfaces band badly on projectors and read as
+  cheap; 2.5% monochrome noise fixes both. Purely decorative and non-blocking.
+*/
+.noise::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ------------------------------------------------------------- surfaces -- */
+
+/*
+  One glass recipe used everywhere: translucent fill, hairline edge, and a
+  single-pixel inner highlight along the top that reads as a lit edge.
+*/
+.glass {
+  background: var(--color-glass);
+  border: 1px solid var(--color-edge);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+.glass-2 {
+  background: var(--color-glass-2);
+  border: 1px solid var(--color-edge-2);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+    0 8px 32px -8px rgba(0, 0, 0, 0.7);
+}
+
+/* A soft coloured bloom behind a card. Decorative; never carries meaning. */
+.bloom {
+  position: relative;
+  isolation: isolate;
+}
+.bloom::after {
+  content: "";
+  position: absolute;
+  inset: -40% -20% 40% -20%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    var(--bloom-color, rgba(79, 156, 249, 0.18)),
+    transparent 70%
+  );
+}
+
+/* ---------------------------------------------------------------- focus -- */
+
+/*
+  One unmistakable focus style. White on a dark field clears every surface,
+  including coloured fills.
+*/
+:where(a, button, [role="button"], input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+/* ------------------------------------------------------------ utilities -- */
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Hero figures: large, light, tightly tracked. */
+.display {
+  font-weight: 300;
+  letter-spacing: -0.035em;
+  line-height: 0.95;
+}
+
+.sr-only-focusable:not(:focus):not(:focus-within) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Dark scrollbars; a default light one wrecks the field. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* --------------------------------------------------------------- motion -- */
+
+@keyframes c1-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes c1-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(61, 220, 151, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(61, 220, 151, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(61, 220, 151, 0);
+  }
+}
+
+@keyframes c1-scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(400%);
+  }
+}
+
+.breathe {
+  animation: c1-breathe 2.4s ease-in-out infinite;
+}
+.pulse-ring {
+  animation: c1-ring 2s ease-out infinite;
+}
+.scan::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  height: 25%;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(79, 156, 249, 0.12),
+    transparent
+  );
+  animation: c1-scan 3.5s linear infinite;
+  pointer-events: none;
+}
+
+/*
+  Honour the OS setting. The reward loop is dopamine, not motion sickness —
+  under this query every animation collapses to an instant state change and
+  Framer Motion's own reduced-motion handling takes over for transforms.
+*/
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .scan::after,
+  .noise::before {
+    display: none;
+  }
+}
+
+/* Windows High Contrast: translucency and hairlines vanish, so restore edges. */
+@media (forced-colors: active) {
+  .glass,
+  .glass-2 {
+    border: 1px solid CanvasText;
+  }
+  .bloom::after,
+  .noise::before {
+    display: none;
+  }
+}

@@ -23,7 +23,7 @@ export function CustomerHeader({
   state: AppState;
   agentOnline: boolean;
   unseenNudges: number;
-  /** Focus Mode shrinks the header to a single line. */
+  /** Safe Mode shrinks the header to a single line. */
   compact?: boolean;
 }) {
   const { customer, agentName } = state;

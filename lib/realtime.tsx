@@ -20,7 +20,7 @@ import {
   type ReactNode,
 } from "react";
 import { syncStore, type Transport } from "./store";
-import type { Action, AppState, Presence, Role, Signal, Telemetry } from "./types";
+import type { Action, AppState, Presence, Role, Signal } from "./types";
 
 interface RealtimeValue {
   state: AppState;
@@ -41,10 +41,6 @@ interface RealtimeValue {
   now: number;
   reset: () => void;
   transport: Transport;
-  /** Live measurements from the customer surface, or null if it is quiet. */
-  telemetry: Telemetry | null;
-  /** Publish this tab's measurements. Call from a timer, never from render. */
-  publishTelemetry: (telemetry: Telemetry) => void;
   /** Send an ephemeral instruction to the other surface. */
   sendSignal: (signal: Signal) => void;
   /** Subscribe to signals from the other surface. Returns an unsubscribe. */
@@ -76,7 +72,7 @@ export function RealtimeProvider({
     syncStore.setIdentity(role, initialView);
   }, [role, initialView]);
 
-  const { state, peers, selfId, selfView, transport, now, telemetry } = snapshot;
+  const { state, peers, selfId, selfView, transport, now } = snapshot;
 
   const value = useMemo<RealtimeValue>(() => {
     const remoteCustomer = peers.find((peer) => peer.role === "customer") ?? null;
@@ -94,12 +90,10 @@ export function RealtimeProvider({
       now,
       reset: () => syncStore.dispatch({ type: "RESET_DEMO" }),
       transport,
-      telemetry,
-      publishTelemetry: syncStore.publishTelemetry,
       sendSignal: syncStore.sendSignal,
       onSignal: syncStore.onSignal,
     };
-  }, [state, peers, selfId, selfView, transport, now, role, telemetry]);
+  }, [state, peers, selfId, selfView, transport, now, role]);
 
   // Consumers only mount once there is state, so `state` is never null inside.
   if (!state) return <>{fallback}</>;

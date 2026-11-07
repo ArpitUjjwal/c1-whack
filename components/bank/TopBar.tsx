@@ -24,7 +24,7 @@ export function TopBar({
           <span aria-hidden="true" className="h-6 w-px bg-edge-2" />
           <div>
             <p className="text-sm leading-tight font-semibold text-fg">
-              Clarity · Care Console
+              Adaptive Support · Care Centre
             </p>
             <p className="text-xs leading-tight text-fg-3">
               Accessibility &amp; Financial Wellbeing desk

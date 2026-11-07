@@ -1,6 +1,26 @@
-import type { Action, Actor, AppState, TimelineEvent } from "./types";
+import type { Action, Actor, AppState, SupportCase, TimelineEvent } from "./types";
 import { createInitialState } from "./demo-data";
-import { isoDaysFromToday, longDate, money } from "./format";
+import { isoDaysFromToday, longDate, money, shortDate } from "./format";
+
+/** First reference number handed out. Shown on both screens. */
+const FIRST_CASE_REF = 1042;
+
+/** The newest case still waiting on the bank or the customer. */
+function openCase(state: AppState, id?: string): SupportCase | null {
+  if (id) return state.supportCases.find((c) => c.id === id) ?? null;
+  for (let i = state.supportCases.length - 1; i >= 0; i -= 1) {
+    if (state.supportCases[i].status !== "resolved") return state.supportCases[i];
+  }
+  return null;
+}
+
+function patchCase(
+  state: AppState,
+  id: string,
+  patch: (c: SupportCase) => SupportCase,
+): SupportCase[] {
+  return state.supportCases.map((c) => (c.id === id ? patch(c) : c));
+}
 
 let counter = 0;
 /** Collision-resistant enough for a demo, and stable across both tabs. */
@@ -85,6 +105,11 @@ export function reduce(state: AppState, action: Action): AppState {
           caughtUp: clearedOverdue ? true : state.flags.caughtUp,
           winsCount: state.flags.winsCount + 1,
         },
+        supportCases: clearedOverdue
+          ? state.supportCases.map((c) =>
+              c.status === "resolved" ? c : { ...c, status: "resolved" },
+            )
+          : state.supportCases,
         timeline: log(
           state,
           "customer",
@@ -179,6 +204,9 @@ export function reduce(state: AppState, action: Action): AppState {
           extensionAccepted: true,
           winsCount: state.flags.winsCount + 1,
         },
+        supportCases: state.supportCases.map((c) =>
+          c.status === "arrangement_offered" ? { ...c, status: "resolved" } : c,
+        ),
         timeline: log(
           state,
           "customer",
@@ -253,25 +281,6 @@ export function reduce(state: AppState, action: Action): AppState {
       });
     }
 
-    case "SET_ADAPTIVE": {
-      if (state.ui.adaptiveEnabled === action.on) return state;
-      return next({
-        ui: {
-          ...state.ui,
-          adaptiveEnabled: action.on,
-          // Turning the layer off also undoes anything it did.
-          focusMode: action.on ? state.ui.focusMode : false,
-        },
-        timeline: log(
-          state,
-          "customer",
-          action.on ? "Turned the adaptive screen on" : "Turned the adaptive screen off",
-          action.on
-            ? "The app may offer a simpler screen again."
-            : "Nothing is measured on Alex's phone. Focus Mode will not be offered.",
-        ),
-      });
-    }
 
     case "AGENT_NOTE": {
       return next({
@@ -279,42 +288,122 @@ export function reduce(state: AppState, action: Action): AppState {
       });
     }
 
-    case "OFFER_FOCUS": {
+
+
+
+    case "REQUEST_SUPPORT": {
+      const ref = FIRST_CASE_REF + state.supportCases.length;
+      const created: SupportCase = {
+        ...action.request,
+        id: uid("case"),
+        ref,
+        createdAt: Date.now(),
+        status: "review_needed",
+        pathway: null,
+        replyBy: null,
+        accessLog: [],
+      };
       return next({
-        ui: { ...state.ui, focusOffers: state.ui.focusOffers + 1 },
+        supportCases: [...state.supportCases, created],
         timeline: log(
           state,
-          "system",
-          "Offered Focus Mode",
-          "The app offered a simpler screen. Alex decides.",
+          "customer",
+          `Alex sent support request #${ref}`,
+          `${action.request.summary} Reviewed by Alex before sending.`,
+          true,
         ),
       });
     }
 
-    case "SET_FOCUS_MODE": {
-      if (state.ui.focusMode === action.on) return state;
+    case "OPEN_CASE": {
+      const c = openCase(state, action.id);
+      if (!c) return state;
+      // One entry per person: the log is "who has seen this", not a click count.
+      if (c.accessLog.some((e) => e.who === action.who && e.what === "Opened the case")) {
+        return state;
+      }
       return next({
-        ui: { ...state.ui, focusMode: action.on },
+        supportCases: patchCase(state, c.id, (x) => ({
+          ...x,
+          accessLog: [...x.accessLog, { who: action.who, what: "Opened the case", at: Date.now() }],
+        })),
+      });
+    }
+
+    case "OFFER_GUIDED_PAYMENT": {
+      const c = openCase(state, action.id);
+      if (!c || c.status === "resolved") return state;
+      return next({
+        supportCases: patchCase(state, c.id, (x) => ({
+          ...x,
+          status: "guided_offered",
+          pathway: "guided",
+          accessLog: [
+            ...x.accessLog,
+            { who: state.agentName, what: "Offered guided payment support", at: Date.now() },
+          ],
+        })),
+        // An update on a request Alex sent is an answer, not outreach, so it
+        // doesn't count toward Alex's weekly contact limit.
         timeline: log(
           state,
-          "customer",
-          action.on ? "Turned on Focus Mode" : "Turned off Focus Mode",
-          action.on
-            ? "Screen reduced to one decision. Everything else is still one tap away."
-            : "Back to the full screen, by choice.",
+          "agent",
+          `Offered guided payment support on #${c.ref}`,
+          "A step-by-step way to pay appears in Alex's app. No change to terms.",
         ),
       });
     }
 
-    case "DECLINE_FOCUS": {
-      if (state.ui.focusDeclined) return state;
+    case "REFER_SPECIALIST": {
+      const c = openCase(state, action.id);
+      if (!c || c.status === "resolved") return state;
       return next({
-        ui: { ...state.ui, focusDeclined: true },
+        supportCases: patchCase(state, c.id, (x) => ({
+          ...x,
+          status: "specialist_review",
+          pathway: "specialist",
+          replyBy: action.replyBy,
+          accessLog: [
+            ...x.accessLog,
+            { who: state.agentName, what: "Referred for specialist review", at: Date.now() },
+          ],
+        })),
+        // An update on a request Alex sent is an answer, not outreach, so it
+        // doesn't count toward Alex's weekly contact limit.
         timeline: log(
           state,
-          "customer",
-          "Declined Focus Mode",
-          "The app will not offer it again. The customer's preference wins over the model.",
+          "agent",
+          `Referred #${c.ref} for specialist review`,
+          `An adviser will reply by ${shortDate(action.replyBy)}. No extension or fee waiver is assumed.`,
+        ),
+      });
+    }
+
+    case "APPROVE_ARRANGEMENT": {
+      const c = openCase(state, action.id);
+      if (!c || c.status === "resolved" || state.credit.status !== "overdue") return state;
+      return next({
+        supportCases: patchCase(state, c.id, (x) => ({
+          ...x,
+          status: "arrangement_offered",
+          accessLog: [
+            ...x.accessLog,
+            {
+              who: action.approver,
+              what: `Approved an arrangement after the eligibility check (second approver)`,
+              at: Date.now(),
+            },
+          ],
+        })),
+        credit: { ...state.credit, extendedDueDate: action.newDueDate },
+        flags: { ...state.flags, extensionOffered: true },
+        timeline: log(
+          state,
+          "agent",
+          `Arrangement approved on #${c.ref}`,
+          `Eligibility checked and second approval by ${action.approver}. Offered: pay on ${longDate(
+            action.newDueDate,
+          )} instead.`,
         ),
       });
     }

@@ -1,19 +1,17 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
-import { ActionPanel } from "./ActionPanel";
 import { ActivityTimeline } from "./ActivityTimeline";
 import { AgentScriptPanel } from "./AgentScriptPanel";
 import { CognitiveProfileHeader } from "./CognitiveProfileHeader";
-import { CustomerLens } from "./CustomerLens";
+import { FrictionMap } from "./FrictionMap";
 import { LiveAccountPanel } from "./LiveAccountPanel";
 import { PressureComposer } from "./PressureComposer";
-import { SilenceModelPanel } from "./SilenceModelPanel";
 import { SimulationTrack } from "./SimulationTrack";
+import { SupportInbox } from "./SupportInbox";
 import { TopBar } from "./TopBar";
 import { DemoDirector } from "@/components/system/DemoDirector";
 import { JudgeOverlay } from "@/components/system/JudgeOverlay";
-import { runSilenceModel } from "@/lib/engines/silence-model";
 import { buildAgentScript } from "@/lib/scripts";
 import { useRealtimeSync } from "@/lib/realtime";
 import { selectSafeToSpend } from "@/lib/selectors";
@@ -25,19 +23,16 @@ export function BankConsole() {
     dispatch,
     reset,
     customerOnline,
-    customerView,
     peers,
     hydrated,
     now,
     transport,
-    telemetry,
   } = useRealtimeSync();
 
   const safe = useMemo(() => selectSafeToSpend(state), [state]);
-  const silence = useMemo(() => runSilenceModel(state), [state]);
   const script = useMemo(
-    () => buildAgentScript(state, { customerOnline, customerView }),
-    [state, customerOnline, customerView],
+    () => buildAgentScript(state, { customerOnline, customerView: null }),
+    [state, customerOnline],
   );
   const customerPeers = peers.filter((peer) => peer.role === "customer").length;
 
@@ -83,49 +78,33 @@ export function BankConsole() {
         id="bank-main"
         className="relative mx-auto max-w-[1800px] space-y-4 px-4 py-5 lg:px-6"
       >
-        <CognitiveProfileHeader
-          state={state}
-          customerOnline={customerOnline}
-          customerView={customerView}
-        />
+        <CognitiveProfileHeader state={state} customerOnline={customerOnline} />
 
-        {/* Desktop-first: three columns on a wide screen, stacking below. */}
-        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)_minmax(0,1.1fr)]">
-          <div className="space-y-4">
-            <CustomerLens
-              telemetry={telemetry}
-              online={customerOnline}
-              adaptiveEnabled={state.ui.adaptiveEnabled}
-            />
-            <LiveAccountPanel state={state} safe={safe} />
-          </div>
-
-          <div className="space-y-4">
-            <SilenceModelPanel reading={silence} />
-            <ActivityTimeline state={state} now={now} hydrated={hydrated} />
-          </div>
+        {/* Desktop-first: the request and the reply side by side, stacking below. */}
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.9fr)_minmax(0,1.1fr)]">
+          <SupportInbox state={state} dispatch={dispatch} />
 
           <div ref={composerRef} className="space-y-4">
             <PressureComposer key={seedLine ?? "composer"} state={state} onSend={sendNudge} now={now} />
             <AgentScriptPanel script={script} onUseLine={setSeedLine} />
-            <ActionPanel
-              state={state}
-              dispatch={dispatch}
-              customerOnline={customerOnline}
-              now={now}
-            />
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-3">
+          <LiveAccountPanel state={state} safe={safe} />
+          <ActivityTimeline state={state} now={now} hydrated={hydrated} />
+          <FrictionMap />
         </div>
 
         <SimulationTrack />
 
         <p className="px-1 pb-4 text-xs text-fg-3">
-          Prototype for the “Make Credit Accessible” challenge. Both surfaces
-          share one state object, synchronised across windows over{" "}
+          Prototype of Capital One Adaptive Support. Account facts and the
+          requests a customer chooses to send are synchronised across windows over{" "}
           <code className="glass rounded px-1 py-0.5 text-fg-2">BroadcastChannel</code>{" "}
           with a{" "}
           <code className="glass rounded px-1 py-0.5 text-fg-2">localStorage</code>{" "}
-          fallback. No server, no polling.
+          fallback. Nothing measured on the customer&apos;s device crosses over.
         </p>
       </main>
 

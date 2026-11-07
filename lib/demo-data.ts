@@ -2,18 +2,18 @@ import type { AppState } from "./types";
 import { isoDaysFromToday } from "./format";
 
 /**
- * Alex's self-declared needs, in Alex's own phrasing. Exported so the Claude
- * prompt reads the same words the agent sees, rather than a paraphrase.
+ * How Alex prefers to bank — preferences, not conditions. Adaptive Support
+ * never asks for a diagnosis or a reason, so nothing here says why. Exported
+ * so the Claude prompt reads the same words the agent sees.
  */
 export const ALEX_PROFILE = [
-  "Prefers plain language",
-  "Finds money tasks hard to start",
+  "Plain language",
   "One step at a time",
   "No urgency or pressure language",
+  "Written messages over calls",
 ];
 
-export const ALEX_SUPPORT_NOTE =
-  "Checking my balance makes me panic, so I put it off. Then it gets worse. Please keep it short and tell me the one thing to do.";
+export const ALEX_SUPPORT_NOTE = "Keep it short and tell me the one thing to do.";
 
 /**
  * Alex — the persona at the centre of the demo.
@@ -128,21 +128,17 @@ export function createInitialState(): AppState {
         actor: "system",
         title: "No app activity for 14 days",
         detail:
-          "Alex told us money tasks are hard to start. Flagged for proactive, low-pressure outreach instead of another reminder.",
+          "Three emails unopened. Flagged for one in-app message instead of another reminder.",
         at: now - 2 * 86_400_000,
         highlight: true,
       },
     ],
-    ui: {
-      focusMode: false,
-      focusDeclined: false,
-      focusOffers: 0,
-      adaptiveEnabled: true,
-    },
+    supportCases: [],
     demo: {
       beat: -1,
       active: false,
     },
+    epoch: now,
     flags: {
       extensionOffered: false,
       extensionAccepted: false,

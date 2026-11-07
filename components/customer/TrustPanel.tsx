@@ -17,17 +17,22 @@ import type { Action, AppState, ContactChannel, ContactPreferences } from "@/lib
 export function TrustPanel({
   state,
   dispatch,
+  adaptiveEnabled,
+  onToggleAdaptive,
 }: {
   state: AppState;
   dispatch: (action: Action) => void;
+  /** Device-local: never part of shared state. */
+  adaptiveEnabled: boolean;
+  onToggleAdaptive: (on: boolean) => void;
 }) {
-  const on = state.ui.adaptiveEnabled;
+  const on = adaptiveEnabled;
 
   return (
     <>
       <Panel as="article" className="p-5" aria-labelledby="trust-heading">
         <h3 id="trust-heading" className="font-semibold text-fg">
-          What Clarity notices
+          What Adaptive Support notices
         </h3>
         <ul className="mt-3 space-y-2 text-[0.9375rem] text-fg-2">
           <li>How busy the screen you&apos;re on is.</li>
@@ -35,12 +40,17 @@ export function TrustPanel({
             How you seem to be finding it — scrolling back and forth, taps that
             miss. <strong className="font-semibold text-fg">This stays on this phone.</strong>
           </li>
-          <li>Whether you&apos;ve turned on the simpler screen.</li>
+          <li>
+            Whether you&apos;ve turned on Safe Mode, and what you look at in the
+            Time Machine. <strong className="font-semibold text-fg">Also only on this phone.</strong>
+          </li>
         </ul>
 
         <h3 className="mt-5 font-semibold text-fg">What it never does</h3>
         <ul className="mt-3 space-y-2 text-[0.9375rem] text-fg-2">
-          <li>Tell Capital One staff how you seem to be finding things.</li>
+          <li>Tell Capital One staff how you seem to be finding things, or that you use Safe Mode.</li>
+          <li>Ask for a diagnosis, or a reason, before helping.</li>
+          <li>Send anything to Capital One without you seeing it first.</li>
           <li>Feed into credit decisions, your limit, fees or collections.</li>
           <li>Move buttons you&apos;ve learned the place of.</li>
           <li>Ask again after you&apos;ve said no.</li>
@@ -53,7 +63,7 @@ export function TrustPanel({
             </span>
             <span className="block text-sm text-fg-3">
               {on
-                ? "On. May offer a simpler screen."
+                ? "On. May offer to simplify the screen."
                 : "Off. Nothing is measured on this phone."}
             </span>
           </span>
@@ -62,7 +72,7 @@ export function TrustPanel({
             role="switch"
             aria-checked={on}
             aria-labelledby="adaptive-label"
-            onClick={() => dispatch({ type: "SET_ADAPTIVE", on: !on })}
+            onClick={() => onToggleAdaptive(!on)}
             className={`relative inline-flex h-11 w-[4.25rem] shrink-0 items-center rounded-full border transition-colors ${
               on ? "border-calm bg-calm-dim" : "border-edge bg-glass"
             }`}

@@ -8,9 +8,9 @@
  * Three rules this is built under:
  *
  *  1. Nothing identifying is collected. Timestamps of gesture *kinds*, in
- *     memory, in the tab. Nothing is persisted, and the strain reading never
- *     leaves the device: the agent console receives the screen's load and
- *     Focus Mode state, never this. (See `useCognitiveMonitor`.)
+ *     memory, in the tab. Nothing is persisted and nothing leaves the
+ *     device — not strain, not screen load, not Safe Mode state. (See
+ *     `useCognitiveMonitor`, which publishes nothing.)
  *  2. Every signal decays. A moment of confusion two minutes ago is not
  *     evidence about now, so each window is short and rolling.
  *  3. The output is advisory. It can offer to simplify the screen; it can
@@ -31,7 +31,7 @@ export interface StrainReading {
   contributions: StrainContribution[];
 }
 
-/** Strain at or above this offers Focus Mode. */
+/** Strain at or above this offers Safe Mode. */
 export const FOCUS_OFFER_THRESHOLD = 45;
 
 /** Rolling windows, in milliseconds. */

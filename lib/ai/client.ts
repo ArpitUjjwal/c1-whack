@@ -24,6 +24,7 @@ import {
   type RewriteContext,
   type RewriteResult,
 } from "../engines/pressure";
+import { draftLocally, type AdvocateFacts } from "../advocate";
 
 export interface CoachAvailability {
   claude: boolean;
@@ -116,4 +117,29 @@ export async function rewrite(
 
   const local = rewriteLocally(text, ctx);
   return { ...local, source: "local" };
+}
+
+/**
+ * Draft a support request. Tries Claude with validated facts only, falls back
+ * to the deterministic local draft, and says which one it used.
+ */
+export async function draftSupportRequest(
+  facts: AdvocateFacts,
+): Promise<{ message: string; summary: string; source: "local" | "claude" }> {
+  try {
+    const res = await fetch("/api/advocate/draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ facts }),
+    });
+    if (res.ok) {
+      const body = (await res.json()) as { message?: string; summary?: string };
+      if (body.message?.trim() && body.summary?.trim()) {
+        return { message: body.message.trim(), summary: body.summary.trim(), source: "claude" };
+      }
+    }
+  } catch {
+    /* fall through to local */
+  }
+  return { ...draftLocally(facts), source: "local" };
 }

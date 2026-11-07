@@ -4,7 +4,7 @@ import { LoadingShell } from "@/components/ui/LoadingShell";
 import { RealtimeProvider } from "@/lib/realtime";
 
 export const metadata: Metadata = {
-  title: "Capital One · Customer Care Console",
+  title: "Capital One · Care Centre",
   description:
     "The agent side of accessible credit: a live mirror of the customer's app, their declared cognitive needs, behavioural signals, and actions that help rather than pressure.",
 };

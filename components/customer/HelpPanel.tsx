@@ -19,11 +19,15 @@ export function HelpPanel({
   agentOnline,
   onMessageAgent,
   dispatch,
+  adaptiveEnabled,
+  onToggleAdaptive,
 }: {
   state: AppState;
   agentOnline: boolean;
   onMessageAgent: (text: string) => void;
   dispatch: (action: Action) => void;
+  adaptiveEnabled: boolean;
+  onToggleAdaptive: (on: boolean) => void;
 }) {
   const [draft, setDraft] = useState("");
   const [sent, setSent] = useState(false);
@@ -46,7 +50,7 @@ export function HelpPanel({
       <Panel as="article" className="p-5">
         <h3 className="font-semibold text-fg">How you like to be helped</h3>
         <p className="mt-1 text-sm text-fg-3">
-          You told us this, and everyone who helps you can see it.
+          Your preferences — no reason needed. Everyone who helps you can see them.
         </p>
         <ul className="mt-3 flex flex-wrap gap-2">
           {state.customer.cognitiveProfile.map((need) => (
@@ -60,7 +64,12 @@ export function HelpPanel({
         </blockquote>
       </Panel>
 
-      <TrustPanel state={state} dispatch={dispatch} />
+      <TrustPanel
+        state={state}
+        dispatch={dispatch}
+        adaptiveEnabled={adaptiveEnabled}
+        onToggleAdaptive={onToggleAdaptive}
+      />
 
       <Panel as="article" className="p-5">
         <div className="flex items-center justify-between gap-3">

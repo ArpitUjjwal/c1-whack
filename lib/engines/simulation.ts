@@ -95,11 +95,11 @@ const STANDARD_POLICY: Step[] = [
 /** Remove the pressure, then remove the effort. Nothing given away. */
 const DESIGN_STEPS: Step[] = [
   { day: 0, label: "Late fee already charged", detail: "£12, added when the date passed. This policy leaves it in place.", kind: "neutral", fee: LATE_FEE },
-  { day: 0, label: "Silence Model flags the file", detail: "14 days quiet plus three unopened emails. Routed to proactive support, not the arrears queue.", kind: "neutral" },
+  { day: 0, label: "Three unopened emails flag the file", detail: "Account facts only — routed to one in-app message instead of a fourth email.", kind: "neutral" },
   { day: 1, label: "One in-app message, not a fourth email", detail: "Alex's chosen channel, outside quiet hours. Scored calm on the Pressure Index, with the one real date stated once.", kind: "support", add: 0.1 },
-  { day: 3, label: "Customer opens the app; Focus Mode accepted", detail: `Screen load ${FOCUS_LOAD_BEFORE} → ${FOCUS_LOAD_AFTER}. One decision on screen.`, kind: "support", add: 0.08 },
-  { day: 3, label: "Safe-to-Spend shows the £41 already set aside", detail: "Paying changes nothing Alex was counting on, so there is nothing to work out first.", kind: "support", add: 0.08 },
-  { day: 4, label: "One-tap pay", detail: "One button, one confirmation, no forms.", kind: "support", add: 0.1 },
+  { day: 3, label: "Welcome-back, then Safe Mode", detail: `What changed in three lines; one tap to strip the app to what matters. Screen load ${FOCUS_LOAD_BEFORE} → ${FOCUS_LOAD_AFTER}.`, kind: "support", add: 0.08 },
+  { day: 3, label: "Time Machine: one payment needs you", detail: "The rest pay themselves or can wait. Safe-to-Spend shows the £41 was already set aside.", kind: "support", add: 0.08 },
+  { day: 4, label: "Help me resolve this → guided payment", detail: "Alex asks; the bank offers three small steps. No change to terms.", kind: "support", add: 0.1 },
 ];
 
 const AFTER_RESOLVE_DESIGN: Step[] = [
@@ -110,7 +110,7 @@ const AFTER_RESOLVE_DESIGN: Step[] = [
 const EXTRAS_POLICY: Step[] = [
   { ...DESIGN_STEPS[0], detail: "£12, added when the date passed." },
   ...DESIGN_STEPS.slice(1, 3),
-  { day: 2, label: "Optional: payment extension offered", detail: "Moves the date for Alex. No extra fee for the extra time.", kind: "extra", add: 0.1, concession: "Extension offered" },
+  { day: 2, label: "Optional: arrangement offered", detail: "After an eligibility check and a second approver. No extra fee for the extra time.", kind: "extra", add: 0.1, concession: "Arrangement (approved)" },
   ...DESIGN_STEPS.slice(3),
   ...AFTER_RESOLVE_DESIGN,
   { day: 3, label: "Optional: fee refunded after paying", detail: "Once-a-year goodwill. Follows the payment, never the silence.", kind: "extra", afterResolve: true, fee: -LATE_FEE, concession: "£12 fee refunded after payment" },
@@ -178,8 +178,8 @@ function run(policy: Step[], label: string, id: PolicyId): SimOutcome {
 export function runSimulation(): SimulationResult {
   return {
     standard: run(STANDARD_POLICY, "Standard collections cadence", "standard"),
-    design: run([...DESIGN_STEPS, ...AFTER_RESOLVE_DESIGN], "Clarity, design only", "design"),
-    extras: run(EXTRAS_POLICY, "Clarity + optional extras", "extras"),
+    design: run([...DESIGN_STEPS, ...AFTER_RESOLVE_DESIGN], "Adaptive Support, design only", "design"),
+    extras: run(EXTRAS_POLICY, "Adaptive Support + optional extras", "extras"),
   };
 }
 

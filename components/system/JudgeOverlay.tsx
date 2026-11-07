@@ -8,7 +8,6 @@ import { StatusPill } from "@/components/ui/StatusPill";
 import { auditAccessibility, type A11yReport } from "@/lib/engines/a11y-audit";
 import { measureLoad, type LoadBreakdown } from "@/lib/engines/cognitive-load";
 import type { StrainReading } from "@/lib/engines/signals";
-import { useRealtimeSync } from "@/lib/realtime";
 import type { Role } from "@/lib/types";
 
 /**
@@ -41,7 +40,6 @@ export function JudgeOverlay({
   const [open, setOpen] = useState(false);
   const [a11y, setA11y] = useState<A11yReport | null>(null);
   const [load, setLoad] = useState<LoadBreakdown | null>(null);
-  const { telemetry } = useRealtimeSync();
 
   const measure = useCallback(() => {
     const root = document.querySelector<HTMLElement>(measureRoot);
@@ -133,8 +131,16 @@ export function JudgeOverlay({
                         body="Scroll reversals, taps that hit nothing, disclosure churn and stalls — each on a short rolling window, none of it persisted. It never leaves this device: the agent console sees the screen's load and whether Focus Mode is on, never this."
                       />
                       <Mechanism
-                        name="Adaptive Focus"
-                        body="Offers to simplify above strain 45. Only ever removes or enlarges, never relocates. Declining it once ends the matter permanently."
+                        name="Safe Mode"
+                        body="One tap: “I can't handle banking today.” Also offered on-device above strain 45. Only ever removes or enlarges, never relocates. Kept on this device; the bank is never told."
+                      />
+                      <Mechanism
+                        name="Financial Time Machine"
+                        body="1–14 day break, projected from known bills, dates and the balance, with assumptions printed. Read-only: it never pays, extends or waives."
+                      />
+                      <Mechanism
+                        name="Financial Advocate"
+                        body="Prepares a support request from validated facts. The customer reviews exactly what is shared and sends it themselves."
                       />
                     </>
                   ) : (
@@ -144,12 +150,16 @@ export function JudgeOverlay({
                         body="Scores every outgoing message as it is typed. Transparent lexicon plus structural rules; each finding names its span and its points."
                       />
                       <Mechanism
-                        name="Silence Model"
-                        body="Six features with hand-tuned weights, all shown. Explicitly not trained on data — stated so it can be argued with."
+                        name="Support handoff"
+                        body="Requests arrive only when a customer sends one, with a 'deliberately not shared' list beside them and an access log."
                       />
                       <Mechanism
-                        name="Policy simulation"
-                        body="Thirty days under two outreach policies. Fully deterministic; assumptions printed beneath it."
+                        name="Financial Rescue Simulator"
+                        body="Three pathways for one request, from the customer's side. No pathway assumes an extension or fee waiver; arrangements need eligibility and a second approver."
+                      />
+                      <Mechanism
+                        name="Friction Map and policy simulation"
+                        body="Where journeys are hard, from illustrative aggregated data — never people. Plus thirty days under three outreach policies, assumptions printed."
                       />
                     </>
                   )}
@@ -214,17 +224,16 @@ export function JudgeOverlay({
                 </section>
               ) : null}
 
-              {telemetry && role === "bank" ? (
+              {role === "bank" ? (
                 <section className="mt-6">
                   <h3 className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
-                    Live from the customer surface
+                    From the customer&apos;s device
                   </h3>
-                  <dl className="mt-2 space-y-1.5 text-sm">
-                    <Row label="Cognitive load" value={`${telemetry.load} (${telemetry.loadBand})`} />
-                    <Row label="Interaction strain" value="Not shared — stays on Alex's device" />
-                    <Row label="Focus Mode" value={telemetry.focusMode ? "on" : "off"} />
-                    <Row label="Screen" value={telemetry.view} />
-                  </dl>
+                  <p className="mt-2 text-sm text-fg-2">
+                    Nothing. No screen load, no strain, no Safe Mode state and
+                    no Time Machine activity crosses to this console. It sees
+                    account facts, presence, and the requests Alex chooses to send.
+                  </p>
                 </section>
               ) : null}
 
@@ -319,15 +328,6 @@ function Mechanism({ name, body }: { name: string; body: string }) {
       <p className="font-semibold text-fg">{name}</p>
       <p className="text-fg-2">{body}</p>
     </li>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-3">
-      <dt className="text-fg-3">{label}</dt>
-      <dd className="font-medium text-fg">{value}</dd>
-    </div>
   );
 }
 

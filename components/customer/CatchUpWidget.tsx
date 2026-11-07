@@ -32,7 +32,7 @@ export function CatchUpWidget({
   onPay,
   onAcceptExtension,
   onAcceptSplit,
-  onAskForTime,
+  onNeedHelp,
   onDisclosureToggle,
 }: {
   state: AppState;
@@ -42,11 +42,11 @@ export function CatchUpWidget({
   onPay: (amount: number) => void;
   onAcceptExtension: () => void;
   onAcceptSplit: () => void;
-  onAskForTime: () => void;
+  /** Opens the Advocate: "Help me resolve this". */
+  onNeedHelp: () => void;
   onDisclosureToggle?: (open: boolean) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
-  const [optionsOpen, setOptionsOpen] = useState(false);
   const { credit, flags, agentName } = state;
   const amount = credit.minimumDue;
   const splitAmount = Math.round((amount / 3) * 100) / 100;
@@ -141,8 +141,8 @@ export function CatchUpWidget({
         <Button size="lg" variant="calm" fullWidth onClick={() => setConfirming(true)}>
           Pay {money(amount)} now
         </Button>
-        <Button size="md" variant="outline" fullWidth onClick={() => setOptionsOpen(true)}>
-          I need a different option
+        <Button size="md" variant="outline" fullWidth onClick={onNeedHelp}>
+          Help me resolve this
         </Button>
       </div>
 
@@ -201,45 +201,6 @@ export function CatchUpWidget({
         </div>
       </Sheet>
 
-      {/* ------------------------------------------------- other options -- */}
-      <Sheet
-        open={optionsOpen}
-        onClose={() => setOptionsOpen(false)}
-        title="That's completely fine"
-        description="Pick whatever feels doable. You don't have to explain why."
-      >
-        <div className="space-y-2.5">
-          <Button
-            size="lg"
-            variant="outline"
-            fullWidth
-            onClick={() => {
-              setOptionsOpen(false);
-              onPay(splitAmount);
-            }}
-          >
-            Pay a smaller {money(splitAmount)} today
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            fullWidth
-            onClick={() => {
-              setOptionsOpen(false);
-              onAskForTime();
-            }}
-          >
-            Ask for more time
-          </Button>
-          <Button size="md" variant="ghost" fullWidth onClick={() => setOptionsOpen(false)}>
-            Close this
-          </Button>
-        </div>
-        <p className="mt-4 text-xs text-fg-3">
-          Asking for more time sends a note to your support team. Nobody will
-          call you unless you ask them to.
-        </p>
-      </Sheet>
     </Panel>
   );
 }

@@ -23,7 +23,7 @@ export interface AgentScript {
  * library, so it changes the moment Alex does something in the app — pay the
  * bill mid-call and the agent's words update before they finish the sentence.
  *
- * Every variant follows the same rules, taken from Alex's declared profile:
+ * Every variant follows the same rules, taken from Alex's stated preferences:
  * short sentences, one instruction at a time, no urgency language, no
  * collections vocabulary, and the consequence of each option stated plainly.
  *
@@ -60,9 +60,72 @@ export function buildAgentScript(
     },
     {
       phrase: "Stacking options: “You can do A, or B, or C…”",
-      why: "Alex processes one step at a time. Offer one thing, wait, then offer the next.",
+      why: "Alex prefers one step at a time. Offer one thing, wait, then offer the next.",
     },
   ];
+
+  /* ------------------------------------- an open request: follow the case */
+  const open = [...state.supportCases].reverse().find((c) => c.status !== "resolved");
+  if (open && credit.status !== "current") {
+    const caseAvoid = [
+      ...universalAvoid,
+      {
+        phrase: "Asking why, or how Alex is feeling",
+        why: "No reason is needed. The request already says what would help.",
+      },
+      {
+        phrase: "Asking Alex to explain again",
+        why: "Everything Alex chose to share is in the request.",
+      },
+    ];
+    const reply = `${CHANNEL_LABEL[open.contact]}${open.keepRepliesShort ? ", kept short" : ""}`;
+
+    if (open.status === "review_needed") {
+      return {
+        situation: `Request #${open.ref}: ${open.summary}`,
+        opener: "“Thanks for sending this, Alex. You don't need to explain anything else.”",
+        lines: [
+          `“It's the ${amount} on your card. I can make paying it simpler — three small steps in the app.”`,
+          `“${creditFileLine(payByDate(credit))}”`,
+          "“If that doesn't fit, an adviser can look at other options with you.”",
+        ],
+        avoid: caseAvoid,
+        nextStep: `Pick a pathway in the Rescue Simulator. Reply by ${reply}.`,
+      };
+    }
+    if (open.status === "guided_offered") {
+      return {
+        situation: `Request #${open.ref}: guided payment offered. Waiting on Alex — don't chase.`,
+        opener: "“It's in your app now: three small steps. Take it whenever suits you.”",
+        lines: ["“If you'd rather do something different, just reply and I'll pass it to an adviser.”"],
+        avoid: caseAvoid,
+        nextStep: "Wait. No second message today.",
+      };
+    }
+    if (open.status === "specialist_review") {
+      return {
+        situation: `Request #${open.ref}: with a specialist adviser${
+          open.replyBy ? `, reply due ${longDate(open.replyBy)}` : ""
+        }.`,
+        opener: "“An adviser has your request. They'll reply in writing — you don't need to do anything.”",
+        lines: ["“Nothing about your payment changes until you agree to it.”"],
+        avoid: caseAvoid,
+        nextStep: "Adviser: run the eligibility check. Any arrangement needs a second approver.",
+      };
+    }
+    if (open.status === "arrangement_offered") {
+      return {
+        situation: `Request #${open.ref}: arrangement approved and offered. Waiting on Alex.`,
+        opener: "“An adviser has offered you a new date. It's in your app.”",
+        lines: [
+          "“There's no extra fee for the extra time.”",
+          "“An arrangement doesn't stop a late payment being reported, so paying by the date still matters.”",
+        ],
+        avoid: caseAvoid,
+        nextStep: "Wait for Alex to accept. Don't repeat the offer.",
+      };
+    }
+  }
 
   /* ------------------------------------------- resolved: close out warmly */
   if (credit.status === "current" && flags.autopayEnabled) {

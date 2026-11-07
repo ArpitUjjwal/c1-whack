@@ -21,19 +21,16 @@ import type { AppState } from "@/lib/types";
 export function CognitiveProfileHeader({
   state,
   customerOnline,
-  customerView,
 }: {
   state: AppState;
   customerOnline: boolean;
-  customerView: string | null;
 }) {
   const { customer } = state;
   const prefs = customer.contactPreferences;
 
+  // Online or not, and nothing more: which screen Alex is on is not shared.
   const appStatus = customerOnline
-    ? customerView
-      ? `In the app now · ${customerView}`
-      : "In the app now"
+    ? "In the app now"
     : customer.openedAppToday
       ? "Opened today · now offline"
       : "Offline";
@@ -64,7 +61,7 @@ export function CognitiveProfileHeader({
 
         <div className="max-w-xl">
           <h2 className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
-            Self-declared accessibility needs
+            How Alex prefers to bank
           </h2>
           <ul className="mt-2 flex flex-wrap gap-2">
             {customer.cognitiveProfile.map((need) => (
@@ -92,7 +89,7 @@ export function CognitiveProfileHeader({
       <blockquote className="mt-3 rounded-xl border-l-2 border-calm bg-calm-dim p-4 text-[0.9375rem] text-fg-2">
         <p className="italic">&ldquo;{customer.supportNote}&rdquo;</p>
         <footer className="mt-1.5 text-xs font-medium text-calm not-italic">
-          — In Alex&apos;s own words, from the accessibility preferences screen
+          — Alex&apos;s own words. No reason given, none needed.
         </footer>
       </blockquote>
     </Panel>

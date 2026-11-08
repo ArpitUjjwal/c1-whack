@@ -53,7 +53,7 @@ export function SuccessOverlay({
             className="pointer-events-none absolute inset-0"
             style={{
               background:
-                "radial-gradient(30rem 20rem at 50% 35%, rgba(61,220,151,0.16), transparent 70%)",
+                "radial-gradient(30rem 20rem at 50% 35%, rgba(7,107,72,0.10), transparent 70%)",
             }}
           />
           {!reduceMotion ? <Confetti /> : null}
@@ -72,7 +72,7 @@ export function SuccessOverlay({
               <motion.path
                 d="M12 25.5 L20.5 34 L36 16"
                 fill="none"
-                stroke="#06090f"
+                stroke="var(--color-void)"
                 strokeWidth="4.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"

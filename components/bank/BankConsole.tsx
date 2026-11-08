@@ -1,20 +1,19 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
-import { ActionPanel } from "./ActionPanel";
+import { useCallback, useMemo, useState } from "react";
 import { ActivityTimeline } from "./ActivityTimeline";
 import { AgentScriptPanel } from "./AgentScriptPanel";
 import { CognitiveProfileHeader } from "./CognitiveProfileHeader";
-import { CustomerLens } from "./CustomerLens";
+import { InsightsReport } from "./InsightsReport";
 import { LiveAccountPanel } from "./LiveAccountPanel";
+import { NextActionBar } from "./NextActionBar";
 import { PressureComposer } from "./PressureComposer";
-import { SilenceModelPanel } from "./SilenceModelPanel";
-import { SimulationTrack } from "./SimulationTrack";
+import { SupportInbox } from "./SupportInbox";
 import { TopBar } from "./TopBar";
 import { DemoDirector } from "@/components/system/DemoDirector";
 import { JudgeOverlay } from "@/components/system/JudgeOverlay";
-import { runSilenceModel } from "@/lib/engines/silence-model";
 import { buildAgentScript } from "@/lib/scripts";
+import { useAgentScript } from "@/lib/ai/useAgentScript";
 import { useRealtimeSync } from "@/lib/realtime";
 import { selectSafeToSpend } from "@/lib/selectors";
 import type { Tone } from "@/lib/types";
@@ -25,24 +24,36 @@ export function BankConsole() {
     dispatch,
     reset,
     customerOnline,
-    customerView,
     peers,
     hydrated,
     now,
     transport,
-    telemetry,
   } = useRealtimeSync();
 
   const safe = useMemo(() => selectSafeToSpend(state), [state]);
-  const silence = useMemo(() => runSilenceModel(state), [state]);
-  const script = useMemo(
-    () => buildAgentScript(state, { customerOnline, customerView }),
-    [state, customerOnline, customerView],
+  const localScript = useMemo(
+    () => buildAgentScript(state, { customerOnline, customerView: null }),
+    [state, customerOnline],
   );
+  /*
+    The template script renders immediately; a written one replaces it only if
+    it arrives and clears the pressure check on the server. The agent never
+    waits and never sees a spinner here.
+  */
+  const { script, source: scriptSource } = useAgentScript(state, localScript);
+
   const customerPeers = peers.filter((peer) => peer.role === "customer").length;
 
-  const composerRef = useRef<HTMLDivElement>(null);
-  const [seedLine, setSeedLine] = useState<string | null>(null);
+  /*
+    A line chosen elsewhere — "Use" in the script, or the next-action bar —
+    re-keys the composer with that line as its draft and focuses it. The
+    counter makes choosing the same line twice still work.
+  */
+  const [seed, setSeed] = useState<{ line: string; n: number } | null>(null);
+  const compose = useCallback(
+    (line: string) => setSeed((prev) => ({ line, n: (prev?.n ?? 0) + 1 })),
+    [],
+  );
 
   const sendNudge = useCallback(
     (title: string, body: string, tone: Tone) => {
@@ -61,7 +72,7 @@ export function BankConsole() {
         className="pointer-events-none fixed inset-0"
         style={{
           background:
-            "radial-gradient(70rem 40rem at 15% -10%, rgba(79,156,249,0.10), transparent 65%), radial-gradient(60rem 40rem at 90% 0%, rgba(157,140,255,0.08), transparent 65%)",
+            "radial-gradient(70rem 40rem at 15% -10%, rgba(15,86,184,0.07), transparent 65%), radial-gradient(60rem 40rem at 90% 0%, rgba(81,52,196,0.06), transparent 65%)",
         }}
       />
 
@@ -77,50 +88,60 @@ export function BankConsole() {
         transport={transport}
         peerCount={customerPeers}
         onReset={reset}
+        profileId={state.profileId}
+        onSwitchProfile={(profile) => dispatch({ type: "RESET_DEMO", profile })}
       />
 
+      {/* The bottom padding clears the fixed demo hint bar, which sits at the
+          foot of the viewport and otherwise covers the last line of the
+          footer. */}
+      {/* The bottom padding clears the fixed demo hint bar. */}
       <main
         id="bank-main"
-        className="relative mx-auto max-w-[1800px] space-y-4 px-4 py-5 lg:px-6"
+        className="relative mx-auto max-w-[1800px] space-y-3 px-4 pt-4 pb-16 lg:px-6"
       >
-        <CognitiveProfileHeader
+        <CognitiveProfileHeader state={state} customerOnline={customerOnline} />
+
+        <NextActionBar
           state={state}
+          now={now}
           customerOnline={customerOnline}
-          customerView={customerView}
+          dispatch={dispatch}
+          onCompose={compose}
         />
 
-        {/* Desktop-first: three columns on a wide screen, stacking below. */}
-        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)_minmax(0,1.1fr)]">
-          <div className="space-y-4">
-            <CustomerLens telemetry={telemetry} online={customerOnline} />
-            <LiveAccountPanel state={state} safe={safe} />
+        {/*
+          Desktop: the request and the account on the left, the reply on the
+          right. Stacks below xl.
+        */}
+        <div className="grid grid-cols-1 items-start gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <div className="space-y-3">
+            <SupportInbox state={state} dispatch={dispatch} />
+            <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
+              <LiveAccountPanel state={state} safe={safe} />
+              <ActivityTimeline state={state} now={now} hydrated={hydrated} />
+            </div>
           </div>
 
-          <div className="space-y-4">
-            <SilenceModelPanel reading={silence} />
-            <ActivityTimeline state={state} now={now} hydrated={hydrated} />
-          </div>
-
-          <div ref={composerRef} className="space-y-4">
-            <PressureComposer key={seedLine ?? "composer"} state={state} onSend={sendNudge} />
-            <AgentScriptPanel script={script} onUseLine={setSeedLine} />
-            <ActionPanel
+          <div className="space-y-3">
+            <PressureComposer
+              key={`composer-${seed?.n ?? 0}`}
               state={state}
-              dispatch={dispatch}
-              customerOnline={customerOnline}
+              onSend={sendNudge}
+              now={now}
+              initialDraft={seed?.line}
+              focusOnMount={seed !== null}
             />
+            <AgentScriptPanel script={script} source={scriptSource} onUseLine={compose} />
           </div>
         </div>
 
-        <SimulationTrack />
+        <InsightsReport liveCases={state.supportCases} />
 
         <p className="px-1 pb-4 text-xs text-fg-3">
-          Prototype for the “Make Credit Accessible” challenge. Both surfaces
-          share one state object, synchronised across windows over{" "}
-          <code className="glass rounded px-1 py-0.5 text-fg-2">BroadcastChannel</code>{" "}
-          with a{" "}
-          <code className="glass rounded px-1 py-0.5 text-fg-2">localStorage</code>{" "}
-          fallback. No server, no polling.
+          Prototype of Capital One Adaptive Support. Account facts and the requests
+          a customer chooses to send sync across windows; nothing measured on the
+          customer&apos;s device crosses over.
         </p>
       </main>
 

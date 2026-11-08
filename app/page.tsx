@@ -13,7 +13,7 @@ export default function Home() {
         className="pointer-events-none fixed inset-0"
         style={{
           background:
-            "radial-gradient(70rem 45rem at 20% -10%, rgba(79,156,249,0.14), transparent 65%), radial-gradient(55rem 40rem at 85% 10%, rgba(157,140,255,0.10), transparent 65%)",
+            "radial-gradient(70rem 45rem at 20% -10%, rgba(15,86,184,0.08), transparent 65%), radial-gradient(55rem 40rem at 85% 10%, rgba(81,52,196,0.07), transparent 65%)",
         }}
       />
 
@@ -24,13 +24,13 @@ export default function Home() {
           Make Credit Accessible
         </p>
         <h1 className="display mt-3 text-5xl tracking-tight sm:text-6xl">
-          Clarity
+          Capital One Adaptive Support
         </h1>
         <p className="mt-5 max-w-2xl text-lg text-fg-2">
-          Credit isn&apos;t inaccessible because the information is missing.
-          It&apos;s inaccessible because the interface demands executive
-          function the customer doesn&apos;t have in that moment — and then the
-          bank&apos;s own outreach spends what little is left.
+          Most banking apps help you manage money when you&apos;re able to. This
+          keeps banking manageable on your hardest days — and helps you ask for
+          support before a payment fails. No diagnosis needed, and available to
+          anyone.
         </p>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
@@ -43,9 +43,9 @@ export default function Home() {
             </p>
             <h2 className="mt-2 text-2xl font-semibold">Alex&apos;s phone</h2>
             <p className="mt-2 text-[0.9375rem] text-fg-2">
-              Measures the executive load it is demanding, and offers to reduce
-              it. One safe-to-spend number, jargon folded away, a missed payment
-              framed as fixable rather than shameful.
+              Safe Mode in one tap, a Financial Time Machine for stepping away,
+              and an Advocate that prepares a support request for Alex to
+              review and send.
             </p>
             <p className="mt-4 text-sm font-semibold text-link underline underline-offset-4">
               Open the app →
@@ -59,46 +59,28 @@ export default function Home() {
             <p className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
               Route 2 · /bank
             </p>
-            <h2 className="mt-2 text-2xl font-semibold">Care console</h2>
+            <h2 className="mt-2 text-2xl font-semibold">Care Centre</h2>
             <p className="mt-2 text-[0.9375rem] text-fg-2">
-              Scores the agent&apos;s own language before it is sent, reads the
-              14-day silence as a signal, and plays out thirty days under two
-              policies side by side.
+              Receives only what the customer chose to share, explores support
+              pathways before offering anything, and maps where journeys —
+              not people — get stuck.
             </p>
             <p className="mt-4 text-sm font-semibold text-link underline underline-offset-4">
-              Open the console →
+              Open the Care Centre →
             </p>
           </Link>
         </div>
 
         <section className="glass mt-10 rounded-xl2 p-6">
-          <h2 className="text-lg font-semibold">Three mechanisms, not three claims</h2>
-          <dl className="mt-4 space-y-4 text-[0.9375rem]">
-            <div>
-              <dt className="font-semibold text-fg">Cognitive Load Meter</dt>
-              <dd className="text-fg-2">
-                Scores what the screen demands, watches how hard the customer is
-                finding it, and offers Focus Mode. It only ever removes or
-                enlarges, always says what it did, and never asks twice.
-              </dd>
-            </div>
-            <div>
-              <dt className="font-semibold text-fg">Pressure Index</dt>
-              <dd className="text-fg-2">
-                Scores every outgoing message as the agent types it, highlights
-                the exact words doing harm, and rewrites them. Red appears here
-                and in the logo — never on the customer&apos;s own money.
-              </dd>
-            </div>
-            <div>
-              <dt className="font-semibold text-fg">Silence Model</dt>
-              <dd className="text-fg-2">
-                Treats not-opening-the-app as information. Six features,
-                hand-tuned weights, every contribution shown — explicitly not
-                trained on anything, so it can be argued with.
-              </dd>
-            </div>
-          </dl>
+          <h2 className="text-lg font-semibold">What stops people exploiting it?</h2>
+          <p className="mt-3 text-[0.9375rem] text-fg-2">
+            Nothing here grants a financial benefit because someone says
+            they&apos;re struggling. It removes barriers to information and to
+            the bank&apos;s existing support. Any arrangement goes through an
+            eligibility check and a second approver; a fee refund only follows
+            a payment. And the bank never sees a diagnosis, a mood, or anything
+            measured on the customer&apos;s phone.
+          </p>
         </section>
 
         <p className="mt-8 text-sm text-fg-3">

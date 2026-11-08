@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Disclosure } from "@/components/ui/Disclosure";
 import { Panel } from "@/components/ui/Panel";
 import { Sheet } from "@/components/ui/Sheet";
+import { CREDIT_FILE_RETENTION, creditFileLine, payByDate } from "@/lib/compliance";
 import { longDate, money, shortDate } from "@/lib/format";
 import type { AppState } from "@/lib/types";
 
@@ -31,7 +32,7 @@ export function CatchUpWidget({
   onPay,
   onAcceptExtension,
   onAcceptSplit,
-  onAskForTime,
+  onNeedHelp,
   onDisclosureToggle,
 }: {
   state: AppState;
@@ -41,29 +42,40 @@ export function CatchUpWidget({
   onPay: (amount: number) => void;
   onAcceptExtension: () => void;
   onAcceptSplit: () => void;
-  onAskForTime: () => void;
+  /** Opens the Advocate: "Help me resolve this". */
+  onNeedHelp: () => void;
   onDisclosureToggle?: (open: boolean) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
-  const [optionsOpen, setOptionsOpen] = useState(false);
   const { credit, flags, agentName } = state;
   const amount = credit.minimumDue;
   const splitAmount = Math.round((amount / 3) * 100) / 100;
+  const bounced = credit.ddReturnedOn !== null;
+  const headline = bounced ? "Your Direct Debit didn't go through." : "A payment slipped past.";
 
   return (
-    <Panel bloom="calm" className="p-5" aria-labelledby="catchup-heading">
-      <p className="text-xs font-semibold tracking-[0.12em] text-calm uppercase">
-        One thing to look at
-      </p>
+    <Panel
+      bloom="calm"
+      className="p-5"
+      aria-labelledby="catchup-heading"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold tracking-[0.12em] text-calm uppercase">
+          One thing to look at
+        </p>
+      </div>
 
       <h2
         id="catchup-heading"
         className={`mt-2 font-semibold text-fg ${focusMode ? "text-2xl" : "text-xl"}`}
       >
-        A payment slipped past.
+        {headline}
       </h2>
       <p className={`mt-2 text-fg-2 ${focusMode ? "text-base" : "text-[0.9375rem]"}`}>
-        No worries — this happens, and it&apos;s quick to fix. Your{" "}
+        {bounced
+          ? `The money wasn't in your ${state.current.provider} account on the day — nothing's wrong with the Direct Debit itself. `
+          : "No worries — this happens, and it's quick to fix. "}
+        Your{" "}
         {credit.nickname} needs{" "}
         <strong className="font-semibold text-fg">{money(amount)}</strong>.
       </p>
@@ -103,7 +115,7 @@ export function CatchUpWidget({
                 {credit.extendedDueDate
                   ? longDate(credit.extendedDueDate)
                   : "a later date"}{" "}
-                instead. No fee, and nothing reported late.
+                instead. No extra fee for the extra time.
               </p>
               <Button variant="outline" size="sm" className="mt-3" onClick={onAcceptExtension}>
                 Yes, I&apos;ll take the extra time
@@ -137,11 +149,11 @@ export function CatchUpWidget({
       </AnimatePresence>
 
       <div className="mt-5 space-y-2.5">
-        <Button size="lg" variant="calm" fullWidth onClick={() => setConfirming(true)}>
+        <Button size="lg" variant="brand" fullWidth onClick={() => setConfirming(true)}>
           Pay {money(amount)} now
         </Button>
-        <Button size="md" variant="outline" fullWidth onClick={() => setOptionsOpen(true)}>
-          I need a different option
+        <Button size="md" variant="outline" fullWidth onClick={onNeedHelp}>
+          Help me resolve this
         </Button>
       </div>
 
@@ -154,17 +166,19 @@ export function CatchUpWidget({
               <Row
                 label="Late fee"
                 value={
-                  credit.lateFeeWaived
-                    ? `${money(credit.lateFee)} — waived by ${agentName}`
-                    : money(credit.lateFee)
+                  credit.lateFeeWaivedByGrace
+                    ? `${money(credit.lateFee)} — waived: your last payments were on time`
+                    : credit.lateFeeRefunded
+                      ? `${money(credit.lateFee)} — refunded by ${agentName}`
+                      : money(credit.lateFee)
                 }
               />
               <Row label="Card balance" value={money(credit.balance)} />
               <Row label="Interest rate (APR)" value={`${credit.apr}%`} />
             </dl>
             <p className="mt-3 text-xs text-fg-3">
-              Nothing here affects your credit report yet. Payments are reported
-              after 30 days past due.
+              {creditFileLine(payByDate(credit))} Missed payments that are
+              reported can stay on a credit file for {CREDIT_FILE_RETENTION}.
             </p>
           </Disclosure>
         </div>
@@ -175,17 +189,17 @@ export function CatchUpWidget({
         open={confirming}
         onClose={() => setConfirming(false)}
         title={`Pay ${money(amount)}?`}
-        description={`From ${state.checking.nickname} to your ${credit.nickname}. That's everything this card needs right now.`}
+        description={`From your ${state.current.provider} current account to your ${credit.nickname}. That's everything this card needs right now.`}
       >
         <dl className="glass space-y-2.5 rounded-xl p-4 text-[0.9375rem]">
           <Row label="Paying" value={money(amount)} strong />
-          <Row label="From" value={state.checking.nickname} />
+          <Row label="From" value={`${state.current.provider} ••••${state.current.accountNumber.slice(-4)}`} />
           <Row label="Safe to spend after" value={money(safeAfterPayment)} strong />
         </dl>
         <div className="mt-5 space-y-2.5">
           <Button
             size="lg"
-            variant="calm"
+            variant="brand"
             fullWidth
             onClick={() => {
               setConfirming(false);
@@ -200,45 +214,6 @@ export function CatchUpWidget({
         </div>
       </Sheet>
 
-      {/* ------------------------------------------------- other options -- */}
-      <Sheet
-        open={optionsOpen}
-        onClose={() => setOptionsOpen(false)}
-        title="That's completely fine"
-        description="Pick whatever feels doable. Any of these stops the account going further past due."
-      >
-        <div className="space-y-2.5">
-          <Button
-            size="lg"
-            variant="outline"
-            fullWidth
-            onClick={() => {
-              setOptionsOpen(false);
-              onPay(splitAmount);
-            }}
-          >
-            Pay a smaller {money(splitAmount)} today
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            fullWidth
-            onClick={() => {
-              setOptionsOpen(false);
-              onAskForTime();
-            }}
-          >
-            Ask for more time
-          </Button>
-          <Button size="md" variant="ghost" fullWidth onClick={() => setOptionsOpen(false)}>
-            Close this
-          </Button>
-        </div>
-        <p className="mt-4 text-xs text-fg-3">
-          Asking for more time sends a note to your support team. Nobody will
-          call you unless you ask them to.
-        </p>
-      </Sheet>
     </Panel>
   );
 }

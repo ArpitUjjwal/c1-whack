@@ -1,10 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Meter } from "@/components/ui/Meter";
+import { GRACE_STREAK, checkGrace, onTimeStreak } from "@/lib/engines/grace";
 import { Panel } from "@/components/ui/Panel";
 import { StatusPill } from "@/components/ui/StatusPill";
-import { money, shortDate } from "@/lib/format";
+import { addDays, money, shortDate } from "@/lib/format";
 import { selectCreditUtilisation, type SafeToSpend } from "@/lib/selectors";
 import type { AppState } from "@/lib/types";
 
@@ -22,7 +22,7 @@ export function LiveAccountPanel({
   state: AppState;
   safe: SafeToSpend;
 }) {
-  const { checking, credit, flags } = state;
+  const { current, credit, flags } = state;
   const utilisation = selectCreditUtilisation(state);
 
   const status = (() => {
@@ -38,94 +38,83 @@ export function LiveAccountPanel({
     }
   })();
 
+  const feeValue = credit.lateFeeWaivedByGrace
+    ? "Waived"
+    : credit.lateFeeRefunded
+      ? "Refunded"
+      : money(credit.lateFee);
+  const feeSub = credit.lateFeeWaivedByGrace
+    ? `Grace rule: ${onTimeStreak(credit)}/${GRACE_STREAK} on time`
+    : credit.lateFeeRefunded
+      ? "After payment, once a year"
+      : "Refundable after payment";
+
   return (
-    <Panel className="p-5" aria-labelledby="live-accounts-heading">
+    <Panel className="p-4" aria-labelledby="live-accounts-heading">
       <div className="flex items-center justify-between gap-3">
         <h2 id="live-accounts-heading" className="font-semibold text-fg">
-          Live account view
+          Account
         </h2>
-        <StatusPill tone="pos">
-          <span className="breathe" aria-hidden="true">
-            ●
-          </span>
-          Real time
-        </StatusPill>
+        <StatusPill tone={status.tone}>{status.label}</StatusPill>
       </div>
-      <p className="mt-1 text-sm text-fg-3">
-        The same numbers on Alex&apos;s phone right now.
-      </p>
 
-      <div className="glass-2 mt-4 rounded-xl p-4">
-        <p className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
-          Safe to spend — what Alex sees
-        </p>
-        <motion.p
+      {/* The figure the customer sees, so agent and customer read the same number. */}
+      <div className="glass-2 mt-3 flex items-baseline justify-between gap-3 rounded-xl px-3 py-2">
+        <span className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
+          Safe to spend
+        </span>
+        <motion.span
           key={safe.available}
           initial={{ opacity: 0.4 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.35 }}
-          className="display tnum mt-1 text-[2.25rem] text-fg"
+          className="display tnum text-2xl text-fg"
         >
           {money(safe.available)}
-        </motion.p>
-        <p className="mt-1 text-xs text-fg-3">
-          {money(safe.balance)} in checking, less {money(safe.committed)} committed
-          over {safe.horizonDays} days
-        </p>
+        </motion.span>
       </div>
 
-      <dl className="mt-4 space-y-3">
-        <Metric label={checking.nickname} sub="Checking ••••4417" value={money(checking.balance)} />
-        <div>
-          <Metric
-            label={credit.nickname}
-            sub="Credit ••••8842"
-            value={money(credit.balance)}
-            pill={<StatusPill tone={status.tone}>{status.label}</StatusPill>}
-          />
-          <Meter
-            className="mt-2"
-            value={utilisation}
-            tone={utilisation > 70 ? "attn" : "link"}
-            height="sm"
-            label={`Credit utilisation ${utilisation} percent`}
-          />
-          <p className="mt-1 text-xs text-fg-3">
-            {utilisation}% of {money(credit.creditLimit)} limit
-          </p>
-        </div>
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5">
+        <Metric label="Current account" sub={`${current.provider} ••••${current.accountNumber.slice(-4)}`} value={money(current.balance)} />
+        <Metric label={credit.nickname} sub={`${utilisation}% of ${money(credit.creditLimit)}`} value={money(credit.balance)} />
         <Metric
           label="Minimum due"
           sub={credit.minimumDue > 0 ? `Was due ${shortDate(credit.dueDate)}` : "Nothing outstanding"}
           value={credit.minimumDue > 0 ? money(credit.minimumDue) : "—"}
         />
+        <Metric label="Late fee" sub={feeSub} value={feeValue} />
+        <Metric label="Direct Debit" sub="For the minimum" value={flags.autopayEnabled ? "On" : "Off"} />
         <Metric
-          label="Late fee"
-          sub={credit.lateFeeWaived ? "Waived as a courtesy" : "Assessed, not yet waived"}
-          value={credit.lateFeeWaived ? "Waived" : money(credit.lateFee)}
+          label="Arrangement"
+          sub={flags.extensionOffered && !flags.extensionAccepted ? "Offered, waiting" : "None pending"}
+          value={flags.extensionAccepted ? "New date" : flags.splitPlanAccepted ? "Plan" : "—"}
         />
       </dl>
 
-      <div className="mt-4 flex flex-wrap gap-2 border-t border-edge pt-3">
-        <StatusPill tone={flags.autopayEnabled ? "pos" : "neutral"}>
-          Autopay {flags.autopayEnabled ? "on" : "off"}
-        </StatusPill>
-        <StatusPill tone={flags.extensionAccepted ? "pos" : "neutral"}>
-          Extension{" "}
-          {flags.extensionAccepted
-            ? "accepted"
-            : flags.extensionOffered
-              ? "offered"
-              : "not offered"}
-        </StatusPill>
-        <StatusPill tone={flags.splitPlanAccepted ? "pos" : "neutral"}>
-          Split plan{" "}
-          {flags.splitPlanAccepted
-            ? "active"
-            : flags.splitPlanOffered
-              ? "offered"
-              : "not offered"}
-        </StatusPill>
+      <div className="mt-3 border-t border-edge pt-2">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
+            On-time record
+          </span>
+          <ol className="flex gap-1" aria-label="Last six statements">
+            {credit.paymentHistory.map((h) => (
+              <li
+                key={h.month}
+                title={`${h.month}: ${h.onTime ? "on time" : "late"}`}
+                className={`h-3 w-3 rounded-full ${h.onTime ? "bg-pos" : "bg-attn"}`}
+              >
+                <span className="sr-only">
+                  {h.month} {h.onTime ? "on time" : "late"}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+        <p className="mt-1 text-xs text-fg-3">
+          {credit.lateFeeWaivedByGrace && credit.graceUsedOn
+            ? `Grace used on this payment. Available again from ${shortDate(addDays(credit.graceUsedOn, 365))}.`
+            : checkGrace(credit, credit.dueDate).reason}
+        </p>
       </div>
     </Panel>
   );
@@ -143,23 +132,21 @@ function Metric({
   pill?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div>
-        <dt className="font-medium text-fg">{label}</dt>
-        <dd className="text-xs text-fg-3">{sub}</dd>
-      </div>
-      <div className="text-right">
-        <motion.p
+    <div className="min-w-0">
+      <dt className="text-xs text-fg-3">{label}</dt>
+      <dd>
+        <motion.span
           key={value}
           initial={{ opacity: 0.4 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
-          className="tnum font-semibold text-fg"
+          className="tnum block font-semibold text-fg"
         >
           {value}
-        </motion.p>
-        {pill ? <div className="mt-1">{pill}</div> : null}
-      </div>
+        </motion.span>
+        <span className="block truncate text-xs text-fg-3">{sub}</span>
+        {pill ? <span className="mt-1 block">{pill}</span> : null}
+      </dd>
     </div>
   );
 }

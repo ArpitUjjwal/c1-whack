@@ -71,8 +71,8 @@ export function AllClearCard({
             Want to never think about this again?
           </p>
           <p className="mt-1 text-[0.9375rem] text-fg-2">
-            We can pay the minimum for you each month, on the day it&apos;s due.
-            Turn it off whenever.
+            A Direct Debit can pay the minimum from your current account each
+            month, on the day it&apos;s due. Cancel it whenever.
           </p>
           <Button variant="pos" size="md" className="mt-3" onClick={onEnableAutopay}>
             Yes, handle it for me
@@ -81,7 +81,7 @@ export function AllClearCard({
       ) : (
         <p className="glass mt-5 rounded-xl p-3.5 text-[0.9375rem] text-fg-2">
           <strong className="font-semibold text-fg">
-            Automatic payments are on.
+            Your Direct Debit is set up.
           </strong>{" "}
           The minimum goes out on the due date. You don&apos;t have to remember it.
         </p>

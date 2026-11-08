@@ -1,6 +1,26 @@
-import type { Action, Actor, AppState, TimelineEvent } from "./types";
+import type { Action, Actor, AppState, SupportCase, TimelineEvent } from "./types";
 import { createInitialState } from "./demo-data";
-import { isoDaysFromToday, longDate, money } from "./format";
+import { isoDaysFromToday, longDate, money, shortDate } from "./format";
+
+/** First reference number handed out. Shown on both screens. */
+const FIRST_CASE_REF = 1042;
+
+/** The newest case still waiting on the bank or the customer. */
+function openCase(state: AppState, id?: string): SupportCase | null {
+  if (id) return state.supportCases.find((c) => c.id === id) ?? null;
+  for (let i = state.supportCases.length - 1; i >= 0; i -= 1) {
+    if (state.supportCases[i].status !== "resolved") return state.supportCases[i];
+  }
+  return null;
+}
+
+function patchCase(
+  state: AppState,
+  id: string,
+  patch: (c: SupportCase) => SupportCase,
+): SupportCase[] {
+  return state.supportCases.map((c) => (c.id === id ? patch(c) : c));
+}
 
 let counter = 0;
 /** Collision-resistant enough for a demo, and stable across both tabs. */
@@ -50,7 +70,7 @@ export function reduce(state: AppState, action: Action): AppState {
         timeline: log(
           state,
           "customer",
-          "Alex opened the app",
+          `${state.customer.firstName} opened the app`,
           `First session in ${state.customer.daysSinceLastOpen} days.`,
           true,
         ),
@@ -64,14 +84,14 @@ export function reduce(state: AppState, action: Action): AppState {
     }
 
     case "PAY_CREDIT": {
-      const amount = Math.min(action.amount, state.checking.balance);
+      const amount = Math.min(action.amount, state.current.balance);
       const newCreditBalance = Math.max(0, state.credit.balance - amount);
       const clearedOverdue = amount >= state.credit.minimumDue;
 
       return next({
-        checking: {
-          ...state.checking,
-          balance: Math.round((state.checking.balance - amount) * 100) / 100,
+        current: {
+          ...state.current,
+          balance: Math.round((state.current.balance - amount) * 100) / 100,
         },
         credit: {
           ...state.credit,
@@ -85,6 +105,11 @@ export function reduce(state: AppState, action: Action): AppState {
           caughtUp: clearedOverdue ? true : state.flags.caughtUp,
           winsCount: state.flags.winsCount + 1,
         },
+        supportCases: clearedOverdue
+          ? state.supportCases.map((c) =>
+              c.status === "resolved" ? c : { ...c, status: "resolved" },
+            )
+          : state.supportCases,
         timeline: log(
           state,
           "customer",
@@ -107,8 +132,8 @@ export function reduce(state: AppState, action: Action): AppState {
         timeline: log(
           state,
           "customer",
-          "Turned on automatic minimum payments",
-          "Removes the need to remember the due date at all.",
+          "Set up a Direct Debit for the minimum",
+          "Removes the need to remember the payment date at all.",
         ),
       });
     }
@@ -124,6 +149,10 @@ export function reduce(state: AppState, action: Action): AppState {
             seen: false,
             dismissed: false,
           },
+        ],
+        contactLog: [
+          ...state.contactLog,
+          { channel: "in_app", at: Date.now(), by: "agent" },
         ],
         timeline: log(
           state,
@@ -157,7 +186,7 @@ export function reduce(state: AppState, action: Action): AppState {
           state,
           "agent",
           "Offered a payment extension",
-          `New due date proposed: ${longDate(action.newDueDate)}. Waiting on Alex to accept.`,
+          `New due date proposed: ${longDate(action.newDueDate)}. Waiting on ${state.customer.firstName} to accept.`,
         ),
       });
     }
@@ -175,11 +204,14 @@ export function reduce(state: AppState, action: Action): AppState {
           extensionAccepted: true,
           winsCount: state.flags.winsCount + 1,
         },
+        supportCases: state.supportCases.map((c) =>
+          c.status === "arrangement_offered" ? { ...c, status: "resolved" } : c,
+        ),
         timeline: log(
           state,
           "customer",
           "Accepted the payment extension",
-          "No longer reported as past due. Pressure removed.",
+          "New payment date agreed. No extra fee for the extra time.",
         ),
       });
     }
@@ -191,7 +223,7 @@ export function reduce(state: AppState, action: Action): AppState {
           state,
           "agent",
           "Offered to split the payment into 3 smaller pieces",
-          "Smaller amounts are easier to start. Waiting on Alex.",
+          `Smaller amounts are easier to start. Waiting on ${state.customer.firstName}.`,
         ),
       });
     }
@@ -199,9 +231,9 @@ export function reduce(state: AppState, action: Action): AppState {
     case "ACCEPT_SPLIT_PLAN": {
       const first = Math.round((state.credit.minimumDue / 3) * 100) / 100;
       return next({
-        checking: {
-          ...state.checking,
-          balance: Math.round((state.checking.balance - first) * 100) / 100,
+        current: {
+          ...state.current,
+          balance: Math.round((state.current.balance - first) * 100) / 100,
         },
         credit: {
           ...state.credit,
@@ -223,18 +255,63 @@ export function reduce(state: AppState, action: Action): AppState {
       });
     }
 
-    case "WAIVE_LATE_FEE": {
-      if (state.credit.lateFeeWaived) return state;
+    case "REFUND_LATE_FEE": {
+      // Goodwill follows action, never silence: only once the card is paid.
+      if (
+        state.credit.lateFeeRefunded ||
+        state.credit.lateFeeWaivedByGrace ||
+        state.credit.status !== "current"
+      ) {
+        return state;
+      }
       return next({
-        credit: { ...state.credit, lateFeeWaived: true },
+        credit: { ...state.credit, lateFeeRefunded: true },
         timeline: log(
           state,
           "agent",
-          `Waived the ${money(state.credit.lateFee)} late fee`,
-          "One-time courtesy applied to the account.",
+          `Refunded the ${money(state.credit.lateFee)} late fee`,
+          `Once-a-year goodwill refund, applied after ${state.customer.firstName} paid.`,
         ),
       });
     }
+
+    case "SET_SHARED_PREFERENCES": {
+      const sharing = action.preferences.length > 0 || action.note.trim().length > 0;
+      const was = state.customer.cognitiveProfile.length > 0 || state.customer.supportNote.length > 0;
+      if (!sharing && !was) return state;
+      return next({
+        customer: {
+          ...state.customer,
+          cognitiveProfile: [...action.preferences],
+          supportNote: action.note.trim(),
+        },
+        timeline: log(
+          state,
+          "customer",
+          !sharing
+            ? `${state.customer.firstName} stopped sharing their preferences`
+            : was
+              ? `${state.customer.firstName} updated what they share`
+              : `${state.customer.firstName} shared their banking preferences`,
+          sharing
+            ? "Chosen in the app. Only these labels are shared, never the reasons."
+            : "Support no longer sees them. Plain language is the default for everyone.",
+        ),
+      });
+    }
+
+    case "SET_CONTACT_PREFERENCES": {
+      return next({
+        customer: { ...state.customer, contactPreferences: action.preferences },
+        timeline: log(
+          state,
+          "customer",
+          "Updated contact preferences",
+          `${state.customer.firstName}'s own rules for how and when we get in touch.`,
+        ),
+      });
+    }
+
 
     case "AGENT_NOTE": {
       return next({
@@ -242,42 +319,122 @@ export function reduce(state: AppState, action: Action): AppState {
       });
     }
 
-    case "OFFER_FOCUS": {
+
+
+
+    case "REQUEST_SUPPORT": {
+      const ref = FIRST_CASE_REF + state.supportCases.length;
+      const created: SupportCase = {
+        ...action.request,
+        id: uid("case"),
+        ref,
+        createdAt: Date.now(),
+        status: "review_needed",
+        pathway: null,
+        replyBy: null,
+        accessLog: [],
+      };
       return next({
-        ui: { ...state.ui, focusOffers: state.ui.focusOffers + 1 },
+        supportCases: [...state.supportCases, created],
         timeline: log(
           state,
-          "system",
-          "Offered Focus Mode",
-          "Interaction strain crossed the threshold. The offer is advisory \u2014 Alex decides.",
+          "customer",
+          `${state.customer.firstName} sent support request #${ref}`,
+          `${action.request.summary} Reviewed by ${state.customer.firstName} before sending.`,
+          true,
         ),
       });
     }
 
-    case "SET_FOCUS_MODE": {
-      if (state.ui.focusMode === action.on) return state;
+    case "OPEN_CASE": {
+      const c = openCase(state, action.id);
+      if (!c) return state;
+      // One entry per person: the log is "who has seen this", not a click count.
+      if (c.accessLog.some((e) => e.who === action.who && e.what === "Opened the case")) {
+        return state;
+      }
       return next({
-        ui: { ...state.ui, focusMode: action.on },
+        supportCases: patchCase(state, c.id, (x) => ({
+          ...x,
+          accessLog: [...x.accessLog, { who: action.who, what: "Opened the case", at: Date.now() }],
+        })),
+      });
+    }
+
+    case "OFFER_GUIDED_PAYMENT": {
+      const c = openCase(state, action.id);
+      if (!c || c.status === "resolved") return state;
+      return next({
+        supportCases: patchCase(state, c.id, (x) => ({
+          ...x,
+          status: "guided_offered",
+          pathway: "guided",
+          accessLog: [
+            ...x.accessLog,
+            { who: state.agentName, what: "Offered guided payment support", at: Date.now() },
+          ],
+        })),
+        // An update on a request Alex sent is an answer, not outreach, so it
+        // doesn't count toward Alex's weekly contact limit.
         timeline: log(
           state,
-          "customer",
-          action.on ? "Turned on Focus Mode" : "Turned off Focus Mode",
-          action.on
-            ? "Screen reduced to one decision. Everything else is still one tap away."
-            : "Back to the full screen, by choice.",
+          "agent",
+          `Offered guided payment support on #${c.ref}`,
+          `A step-by-step way to pay appears in ${state.customer.firstName}'s app. No change to terms.`,
         ),
       });
     }
 
-    case "DECLINE_FOCUS": {
-      if (state.ui.focusDeclined) return state;
+    case "REFER_SPECIALIST": {
+      const c = openCase(state, action.id);
+      if (!c || c.status === "resolved") return state;
       return next({
-        ui: { ...state.ui, focusDeclined: true },
+        supportCases: patchCase(state, c.id, (x) => ({
+          ...x,
+          status: "specialist_review",
+          pathway: "specialist",
+          replyBy: action.replyBy,
+          accessLog: [
+            ...x.accessLog,
+            { who: state.agentName, what: "Referred for specialist review", at: Date.now() },
+          ],
+        })),
+        // An update on a request Alex sent is an answer, not outreach, so it
+        // doesn't count toward Alex's weekly contact limit.
         timeline: log(
           state,
-          "customer",
-          "Declined Focus Mode",
-          "The app will not offer it again. The customer's preference wins over the model.",
+          "agent",
+          `Referred #${c.ref} for specialist review`,
+          `An adviser will reply by ${shortDate(action.replyBy)}. No extension or fee waiver is assumed.`,
+        ),
+      });
+    }
+
+    case "APPROVE_ARRANGEMENT": {
+      const c = openCase(state, action.id);
+      if (!c || c.status === "resolved" || state.credit.status !== "overdue") return state;
+      return next({
+        supportCases: patchCase(state, c.id, (x) => ({
+          ...x,
+          status: "arrangement_offered",
+          accessLog: [
+            ...x.accessLog,
+            {
+              who: action.approver,
+              what: `Approved an arrangement after the eligibility check (second approver)`,
+              at: Date.now(),
+            },
+          ],
+        })),
+        credit: { ...state.credit, extendedDueDate: action.newDueDate },
+        flags: { ...state.flags, extensionOffered: true },
+        timeline: log(
+          state,
+          "agent",
+          `Arrangement approved on #${c.ref}`,
+          `Eligibility checked and second approval by ${action.approver}. Offered: pay on ${longDate(
+            action.newDueDate,
+          )} instead.`,
         ),
       });
     }
@@ -289,7 +446,7 @@ export function reduce(state: AppState, action: Action): AppState {
     }
 
     case "RESET_DEMO": {
-      return { ...createInitialState(), rev: state.rev + 1 };
+      return { ...createInitialState(action.profile ?? state.profileId), rev: state.rev + 1 };
     }
 
     default:

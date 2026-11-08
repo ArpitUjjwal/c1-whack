@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Disclosure } from "@/components/ui/Disclosure";
 import { Panel } from "@/components/ui/Panel";
+import { WhatThisMeans } from "./WhatThisMeans";
 import { money } from "@/lib/format";
 import type { SafeToSpend } from "@/lib/selectors";
 
@@ -25,19 +26,21 @@ export function SafeToSpendCard({
 
   return (
     <Panel bloom="link" className="p-5" aria-labelledby="safe-heading">
-      <h2
-        id="safe-heading"
-        className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase"
-      >
-        Safe to spend
-      </h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2
+          id="safe-heading"
+          className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase"
+        >
+          Safe to spend
+        </h2>
+      </div>
 
       <motion.p
         key={safe.available}
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="display tnum mt-2 text-[3.25rem] text-fg"
+        className="display tnum mt-2 text-[2.5rem] text-fg sm:text-[3.25rem]"
       >
         {money(safe.available)}
       </motion.p>
@@ -58,15 +61,38 @@ export function SafeToSpendCard({
         )}
       </p>
 
-      <div className="mt-4 border-t border-edge pt-3">
+      {/*
+        Two ways in, for two different questions. "Show the maths" answers
+        "where did this number come from" with the arithmetic; "what does this
+        mean" answers "what is this number" in words. Someone who finds a
+        table of subtractions hard to read needs the second one, and until now
+        the card only offered the first.
+      */}
+      <div className="mt-3 border-t border-edge pt-1">
+        <WhatThisMeans
+          subject={{
+            kind: "safe-to-spend",
+            available: safe.available,
+            committed: safe.committed,
+            horizonDays: safe.horizonDays,
+          }}
+        />
+      </div>
+
+      <div className="border-t border-edge pt-3">
         <Disclosure
-          label="Show the math"
-          openLabel="Hide the math"
+          label="Show the maths"
+          openLabel="Hide the maths"
           onToggle={onDisclosureToggle}
         >
           <dl className="space-y-2.5 text-[0.9375rem]">
             <div className="flex items-baseline justify-between gap-4">
-              <dt className="text-fg-2">In your checking account</dt>
+              <dt className="text-fg-2">
+                In your current account
+                <span className="block text-xs text-fg-3">
+                  {safe.source}
+                </span>
+              </dt>
               <dd className="tnum font-semibold text-fg">{money(safe.balance)}</dd>
             </div>
 

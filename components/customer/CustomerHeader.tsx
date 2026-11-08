@@ -23,13 +23,14 @@ export function CustomerHeader({
   state: AppState;
   agentOnline: boolean;
   unseenNudges: number;
-  /** Focus Mode shrinks the header to a single line. */
+  /** Safe Mode shrinks the header to a single line. */
   compact?: boolean;
 }) {
   const { customer, agentName } = state;
 
   return (
-    <header className="shrink-0 px-5 pt-2 pb-5">
+    <header className="shrink-0 px-5 pt-2 pb-3 sm:pb-5">
+      {/* Tighter on a real phone, where this fixed header would otherwise take a third of the screen. */}
       <div className="flex items-center justify-between">
         <CapitalOneMark className="w-24" />
         <span className="glass inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium text-fg-2">
@@ -46,17 +47,17 @@ export function CustomerHeader({
 
       {!compact ? (
         <>
-          <h1 className="display mt-6 text-[2.125rem] text-fg">
+          <h1 className="display mt-3 text-[1.625rem] text-fg sm:mt-6 sm:text-[2.125rem]">
             Hi {customer.firstName}.
           </h1>
-          <p className="mt-2 text-[0.9375rem] text-fg-2">
+          <p className="mt-1 text-sm text-fg-2 sm:mt-2 sm:text-[0.9375rem]">
             {customer.daysSinceLastOpen >= 7
               ? "It's been a couple of weeks. Everything's still here, and there's one thing that needs you."
               : "Here's where things stand today."}
           </p>
         </>
       ) : (
-        <h1 className="mt-4 text-lg font-semibold text-fg">Hi {customer.firstName}.</h1>
+        <h1 className="mt-3 text-lg font-semibold text-fg sm:mt-4">Hi {customer.firstName}.</h1>
       )}
 
       {agentOnline ? (
@@ -64,7 +65,7 @@ export function CustomerHeader({
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="glass mt-4 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium text-fg-2"
+          className="glass mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium text-fg-2 sm:mt-4"
         >
           <LiveDot online />
           {agentName} is here if you want them

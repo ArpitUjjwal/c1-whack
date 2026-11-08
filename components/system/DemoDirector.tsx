@@ -55,7 +55,15 @@ export function DemoDirector({ role }: { role: Role }) {
 
       if (event.key === "d" || event.key === "D") {
         event.preventDefault();
-        go(active ? -1 : 0);
+        if (active) {
+          go(-1);
+        } else {
+          // The guided script is Alex's story from first open. Starting it
+          // always resets both windows to a fresh Alex — first-run setup
+          // included — so every beat lands as written.
+          dispatch({ type: "RESET_DEMO", profile: "alex" });
+          go(0);
+        }
         return;
       }
       if (!active) return;
@@ -74,7 +82,7 @@ export function DemoDirector({ role }: { role: Role }) {
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, beat, go]);
+  }, [active, beat, go, dispatch]);
 
   const current = active && beat >= 0 ? BEATS[beat] : null;
   const looksHere = current && (current.look === role || current.look === "both");
@@ -137,8 +145,21 @@ export function DemoDirector({ role }: { role: Role }) {
         ) : null}
       </AnimatePresence>
 
+      {/*
+        Hidden on the customer surface below `sm`. There the device is
+        full-bleed, so this bar — which draws above everything at z-50 — landed
+        on top of the bottom nav and clipped the last line of any open sheet.
+        Above `sm` the phone is inset from the viewport and the bar sits below
+        it; on the console there is nothing anchored to the bottom to hit. It
+        advertises keyboard shortcuts, so a phone-width viewport is also where
+        it has least to say.
+      */}
       {!active ? (
-        <p className="pointer-events-none fixed bottom-3 left-1/2 z-50 -translate-x-1/2 text-[0.6875rem] text-fg-3/70">
+        <p
+          className={`pointer-events-none fixed bottom-3 left-1/2 z-50 -translate-x-1/2 text-[0.6875rem] text-fg-3/70 ${
+            role === "customer" ? "hidden sm:block" : ""
+          }`}
+        >
           <Key>D</Key> demo · <Key>?</Key> how it works
         </p>
       ) : null}

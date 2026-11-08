@@ -3,6 +3,8 @@
 import { LiveDot } from "@/components/ui/LiveDot";
 import { Panel } from "@/components/ui/Panel";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { CHANNEL_LABEL, quietHoursLabel } from "@/lib/contact";
+import { shortDate } from "@/lib/format";
 import type { AppState } from "@/lib/types";
 
 /**
@@ -12,70 +14,96 @@ import type { AppState } from "@/lib/types";
  * next five minutes should go. Putting them in the header rather than behind
  * a notes tab is the whole point: an accommodation nobody reads is not an
  * accommodation.
+ *
+ * Alex's contact preferences sit here too, as a banner: rules Alex set on a
+ * calm day, honoured on a hard one. They are consent, not inference.
  */
 export function CognitiveProfileHeader({
   state,
   customerOnline,
-  customerView,
 }: {
   state: AppState;
   customerOnline: boolean;
-  customerView: string | null;
 }) {
   const { customer } = state;
+  const prefs = customer.contactPreferences;
 
+  // Online or not, and nothing more: which screen the customer is on is not shared.
   const appStatus = customerOnline
-    ? customerView
-      ? `In the app now · ${customerView}`
-      : "In the app now"
+    ? "In the app now"
     : customer.openedAppToday
-      ? "Opened today · now offline"
+      ? "Opened today · offline"
       : "Offline";
 
   return (
-    <Panel bloom="calm" className="p-5" aria-labelledby="profile-heading">
-      <div className="flex flex-wrap items-start justify-between gap-6">
-        <div className="flex items-start gap-4">
+    <Panel bloom="calm" className="px-4 py-3" aria-labelledby="profile-heading">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <div className="flex items-center gap-3">
           <span
             aria-hidden="true"
-            className="glass-2 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-lg font-semibold text-fg"
+            className="glass-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-fg"
           >
-            AR
+            {customer.name
+              .split(" ")
+              .map((part) => part[0])
+              .join("")}
           </span>
           <div>
-            <h1 id="profile-heading" className="text-2xl font-semibold text-fg">
+            <h1 id="profile-heading" className="text-lg leading-tight font-semibold text-fg">
               {customer.name}
             </h1>
-            <p className="text-sm text-fg-3">
-              Customer since {customer.memberSince} · Checking ••••4417 · Card ••••8842
-            </p>
-            <p className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-fg-2">
+            <p className="flex items-center gap-1.5 text-xs text-fg-3">
               <LiveDot online={customerOnline} />
-              {appStatus}
+              {appStatus} · since {customer.memberSince} · card ••••
+              {state.credit.accountNumber.slice(-4)}
             </p>
           </div>
         </div>
 
-        <div className="max-w-xl">
-          <h2 className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
-            Self-declared accessibility needs
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+          <h2 className="mr-1 text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
+            Prefers
           </h2>
-          <ul className="mt-2 flex flex-wrap gap-2">
-            {customer.cognitiveProfile.map((need) => (
-              <li key={need}>
-                <StatusPill tone="calm">{need}</StatusPill>
-              </li>
-            ))}
-          </ul>
+          {customer.cognitiveProfile.length ? (
+            <ul className="contents">
+              {customer.cognitiveProfile.map((need) => (
+                <li key={need}>
+                  <StatusPill tone="calm">{need}</StatusPill>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <span className="text-sm text-fg-2">
+              Nothing shared — plain language, one thing at a time, no pressure.
+            </span>
+          )}
         </div>
       </div>
 
-      <blockquote className="mt-5 rounded-xl border-l-2 border-calm bg-calm-dim p-4 text-[0.9375rem] text-fg-2">
-        <p className="italic">&ldquo;{customer.supportNote}&rdquo;</p>
-        <footer className="mt-1.5 text-xs font-medium text-calm not-italic">
-          — In Alex&apos;s own words, from the accessibility preferences screen
-        </footer>
-      </blockquote>
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-edge pt-2 text-xs text-fg-2">
+        <span
+          role="note"
+          aria-label={`${customer.firstName}'s contact preferences`}
+          className="flex flex-wrap gap-x-3 gap-y-1"
+        >
+          <span className="font-semibold text-fg">
+            {customer.firstName}&apos;s rules ({shortDate(prefs.setOn)}):
+          </span>
+          <span>{CHANNEL_LABEL[prefs.channel]} only</span>
+          <span>≤ {prefs.maxPerWeek} a week</span>
+          <span>Never {quietHoursLabel(prefs)}</span>
+          <span>
+            {prefs.remindDaysBefore
+              ? `Reminders ${prefs.remindDaysBefore} day${prefs.remindDaysBefore === 1 ? "" : "s"} before`
+              : "No reminders"}
+          </span>
+        </span>
+        {customer.supportNote ? (
+          <span className="min-w-0 italic">
+            · Note, shared by choice: &ldquo;{customer.supportNote}&rdquo;
+          </span>
+        ) : null}
+      </div>
     </Panel>
   );
 }

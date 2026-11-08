@@ -7,7 +7,7 @@ import { Meter } from "@/components/ui/Meter";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { auditAccessibility, type A11yReport } from "@/lib/engines/a11y-audit";
 import { measureLoad, type LoadBreakdown } from "@/lib/engines/cognitive-load";
-import { useRealtimeSync } from "@/lib/realtime";
+import type { StrainReading } from "@/lib/engines/signals";
 import type { Role } from "@/lib/types";
 
 /**
@@ -25,15 +25,21 @@ import type { Role } from "@/lib/types";
 export function JudgeOverlay({
   role,
   measureRoot,
+  strain = null,
 }: {
   role: Role;
   /** Selector for the subtree that counts as "the product surface". */
   measureRoot: string;
+  /**
+   * Interaction strain, customer surface only. Passed in from this tab's own
+   * monitor because it is never published — so this overlay is the one place
+   * it is ever shown, and only on the device that measured it.
+   */
+  strain?: StrainReading | null;
 }) {
   const [open, setOpen] = useState(false);
   const [a11y, setA11y] = useState<A11yReport | null>(null);
   const [load, setLoad] = useState<LoadBreakdown | null>(null);
-  const { telemetry } = useRealtimeSync();
 
   const measure = useCallback(() => {
     const root = document.querySelector<HTMLElement>(measureRoot);
@@ -78,7 +84,7 @@ export function JudgeOverlay({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] flex justify-end bg-abyss/70 backdrop-blur-sm"
+            className="fixed inset-0 z-[70] flex justify-end bg-scrim backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-label="How it works, and the live accessibility audit"
@@ -122,26 +128,50 @@ export function JudgeOverlay({
                       />
                       <Mechanism
                         name="Interaction strain"
-                        body="Scroll reversals, taps that hit nothing, disclosure churn and stalls — each on a short rolling window, none of it persisted or sent anywhere."
+                        body="Scroll reversals, taps that hit nothing, disclosure churn and stalls — each on a short rolling window, none of it persisted. It never leaves this device: the agent console sees the screen's load and whether Focus Mode is on, never this."
                       />
                       <Mechanism
-                        name="Adaptive Focus"
-                        body="Offers to simplify above strain 45. Only ever removes or enlarges, never relocates. Declining it once ends the matter permanently."
+                        name="Safe Mode"
+                        body="One tap: “I can't handle banking today.” Also offered on-device above strain 45. Only ever removes or enlarges, never relocates. Kept on this device; the bank is never told."
+                      />
+                      <Mechanism
+                        name="Financial Time Machine"
+                        body="1–14 day break, projected from known bills, dates and the balance, with assumptions printed. Read-only: it never pays, extends or waives."
+                      />
+                      <Mechanism
+                        name="First-run setup"
+                        body="Once, on first open: tick what you find hard and the app changes as you tick. What you tick stays on this phone; sharing the resulting preference labels with support is a separate choice, off by default. Change it all later in Settings & help."
+                      />
+                      <Mechanism
+                        name="Reading options"
+                        body="Reading font, text size, spacing, tint and high contrast — set from the first-run choices, saved on this phone only."
+                      />
+                      <Mechanism
+                        name="Financial Advocate"
+                        body="Prepares a support request from validated facts. The customer reviews exactly what is shared and sends it themselves."
                       />
                     </>
                   ) : (
                     <>
                       <Mechanism
                         name="Pressure Index"
-                        body="Scores every outgoing message as it is typed. Transparent lexicon plus structural rules; each finding names its span and its points."
+                        body="Scores every outgoing message as it is typed. Transparent lexicon plus structural rules; each finding names its span and its points. A tone check (insult list plus the AFINN sentiment model) compares the words with the tone picked, and blocks insults outright."
                       />
                       <Mechanism
-                        name="Silence Model"
-                        body="Six features with hand-tuned weights, all shown. Explicitly not trained on data — stated so it can be argued with."
+                        name="Next action"
+                        body="One strip at the top: the facts that matter (past due, credit-file date, messages this week, quiet hours) and the single next step, with a button that does it. Says 'wait' or 'hold' when contacting now would chase or break the customer's rules."
                       />
                       <Mechanism
-                        name="Policy simulation"
-                        body="Thirty days under two outreach policies. Fully deterministic; assumptions printed beneath it."
+                        name="Support handoff"
+                        body="Requests arrive only when a customer sends one, with a 'deliberately not shared' list beside them and an access log."
+                      />
+                      <Mechanism
+                        name="Financial Rescue Simulator"
+                        body="Three pathways for one request, from the customer's side. No pathway assumes an extension or fee waiver; arrangements need eligibility and a second approver."
+                      />
+                      <Mechanism
+                        name="Accessibility Insights"
+                        body="Top barriers in customers' own words, hardest journeys, what works, and recommendations — from requests customers chose to send, never from their phones, and no group under ten. Collapsed to a one-line summary until opened."
                       />
                     </>
                   )}
@@ -181,17 +211,41 @@ export function JudgeOverlay({
                 </section>
               ) : null}
 
-              {telemetry && role === "bank" ? (
+              {strain && role === "customer" ? (
                 <section className="mt-6">
                   <h3 className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
-                    Live from the customer surface
+                    Interaction strain · this device only
                   </h3>
-                  <dl className="mt-2 space-y-1.5 text-sm">
-                    <Row label="Cognitive load" value={`${telemetry.load} (${telemetry.loadBand})`} />
-                    <Row label="Interaction strain" value={`${telemetry.strain} (${telemetry.strainBand})`} />
-                    <Row label="Focus Mode" value={telemetry.focusMode ? "on" : "off"} />
-                    <Row label="Screen" value={telemetry.view} />
-                  </dl>
+                  <p className="display tnum mt-2 text-4xl text-fg">{strain.score}</p>
+                  <p className="text-xs text-fg-3">
+                    {strain.band} · offers a simpler screen at 45 · never sent to Capital One
+                  </p>
+                  {strain.contributions.length ? (
+                    <ul className="mt-3 space-y-1.5 text-sm">
+                      {strain.contributions.map((c) => (
+                        <li key={c.label} className="flex justify-between gap-3">
+                          <span className="text-fg-2">
+                            {c.label}
+                            <span className="block text-xs text-fg-3">{c.detail}</span>
+                          </span>
+                          <span className="tnum font-semibold text-fg">+{c.points}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {role === "bank" ? (
+                <section className="mt-6">
+                  <h3 className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
+                    From the customer&apos;s device
+                  </h3>
+                  <p className="mt-2 text-sm text-fg-2">
+                    Nothing. No screen load, no strain, no Safe Mode state and
+                    no Time Machine activity crosses to this console. It sees
+                    account facts, presence, and the requests the customer chooses to send.
+                  </p>
                 </section>
               ) : null}
 
@@ -240,13 +294,29 @@ export function JudgeOverlay({
 
                     <AuditRow
                       label="Heading structure"
-                      pass={a11y.headings.length > 0}
-                      detail={`${a11y.headings.length} headings in order`}
+                      pass={a11y.headings.length > 0 && a11y.outlineOk}
+                      detail={
+                        a11y.outlineProblem
+                          ? `${a11y.headings.length} headings · level skipped: ${a11y.outlineProblem}`
+                          : `${a11y.headings.length} headings, no level skipped`
+                      }
                     />
+                    {/*
+                      Only an assertive region fails. A screen with none at all
+                      is not a fault — the account list has nothing that
+                      updates under the reader, and demanding a live region of
+                      every screen would be marking static content wrong.
+                    */}
                     <AuditRow
                       label="Polite live regions"
-                      pass={a11y.liveRegions > 0}
-                      detail={`${a11y.liveRegions} present · none assertive`}
+                      pass={a11y.liveRegions.assertive === 0}
+                      detail={
+                        a11y.liveRegions.assertive > 0
+                          ? `${a11y.liveRegions.total} present · ${a11y.liveRegions.assertive} assertive — interrupts the reader`
+                          : a11y.liveRegions.total > 0
+                            ? `${a11y.liveRegions.total} present · none assertive`
+                            : "None on this screen · nothing updates under the reader"
+                      }
                     />
                     <AuditRow
                       label="Reduced motion"
@@ -261,8 +331,12 @@ export function JudgeOverlay({
 
                   <p className="mt-4 text-xs text-fg-3">
                     Ratios are computed from resolved colours, compositing every
-                    translucent layer exactly as the browser does — so the glass
-                    surfaces are measured as rendered, not as designed.
+                    translucent layer and every inherited{" "}
+                    <code className="glass rounded px-1">opacity</code> exactly
+                    as the browser does — so the panels are measured as
+                    rendered, not as designed. One known limit: background{" "}
+                    <em>gradients</em> are not sampled, so text over one is
+                    measured against the solid colour beneath it.
                   </p>
                 </section>
               ) : null}
@@ -286,15 +360,6 @@ function Mechanism({ name, body }: { name: string; body: string }) {
       <p className="font-semibold text-fg">{name}</p>
       <p className="text-fg-2">{body}</p>
     </li>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-3">
-      <dt className="text-fg-3">{label}</dt>
-      <dd className="font-medium text-fg">{value}</dd>
-    </div>
   );
 }
 

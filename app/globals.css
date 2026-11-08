@@ -1,55 +1,79 @@
 @import "tailwindcss";
 
 /*
-  Clarity — design tokens.
+  Clarity — design tokens, Capital One UK.
 
-  Dark-first "calm futurism". Depth comes from layered translucency, hairline
-  edges and soft radial glow rather than drop shadows, so the surface reads as
-  glass over a deep field instead of cards on paper.
+  The palette is sampled from the UK app rather than invented: the navy field
+  (#1C2641) reads identically across three reference screens, the CTA yellow
+  (#FDE236) from the "Hide my PIN" and "Continue to the app" buttons, and the
+  app canvas (#F6F7F8) from the in-app background. White cards, a hairline
+  edge and a soft shadow carry the depth — no translucency, no glow.
 
-  Every text token below is pinned to a measured contrast ratio against the
-  canvas, and the floor is 4.5:1. The Proof Layer re-measures these at runtime
-  from the live DOM, so the numbers in these comments are checkable rather than
-  claimed.
+  Every text token is pinned to a measured contrast ratio against the canvas,
+  and the floor is 4.5:1. Where a brand value would not clear the floor, the
+  hue is kept and the lightness pulled down until it does; the ratio is stated
+  beside it. The Proof Layer re-measures all of this at runtime from the live
+  DOM, so these numbers are checkable rather than claimed.
 
-  Capital One red is deliberately scarce: it appears in the logo and on the
-  Pressure Index, and nowhere else. Red never marks the customer's own money —
-  only the bank's own harmful language.
+  Capital One red is deliberately scarce: the logo and the Pressure Index, and
+  nowhere else. Red never marks the customer's own money — only the bank's own
+  harmful language.
 */
 @theme {
   /* ---- Field -------------------------------------------------------- */
-  --color-void: #06090f;
-  --color-deep: #0a0f18;
-  --color-abyss: #03050a;
+  --color-void: #f6f7f8; /* the app canvas */
+  --color-deep: #edeff2; /* recessed — bottom nav, sheets, section bands */
+  --color-abyss: #1c2641; /* the navy field *behind* the device */
 
-  /* Translucent surfaces, composited over the field. */
-  --color-glass: rgba(255, 255, 255, 0.04);
-  --color-glass-2: rgba(255, 255, 255, 0.07);
-  --color-glass-3: rgba(255, 255, 255, 0.11);
-  --color-edge: rgba(255, 255, 255, 0.09);
-  --color-edge-2: rgba(255, 255, 255, 0.16);
+  /* Cards. The UK app is flat white on grey, so these are opaque: the name
+     is historical, and kept so every component picks the change up unchanged. */
+  --color-glass: #ffffff;
+  --color-glass-2: #ffffff;
+  --color-glass-3: #ffffff;
+  --color-edge: rgba(28, 38, 65, 0.1);
+  --color-edge-2: rgba(28, 38, 65, 0.16);
+
+  /* Modal scrim: 55% of the navy over whatever is behind it. */
+  --color-scrim: rgba(28, 38, 65, 0.55);
+  /* Recessed track for meters, where a white fill would be invisible. */
+  --color-track: rgba(28, 38, 65, 0.1);
 
   /* ---- Text --------------------------------------------------------- */
-  --color-fg: #f2f6fa; /* 18.1:1 on --color-void */
-  --color-fg-2: #a8b7c7; /* 9.8:1 */
-  --color-fg-3: #7d8fa3; /* 6.0:1 — the floor, never go below */
+  --color-fg: #1c2641; /* the brand navy — 13.6:1 on the canvas, 14.6:1 on white */
+  --color-fg-2: #3d4654; /* 9.0:1 */
+  --color-fg-3: #5c6573; /* 5.5:1 — the quietest text permitted */
+
+  /* ---- Primary action ----------------------------------------------- */
+  /*
+    FILL ONLY. Navy on this yellow is 11.2:1, but the yellow as *text* on white
+    is 1.30:1 — it fails by a factor of three and must never become a text
+    colour. That is exactly how the real app uses it, and the paired token
+    below is the only foreground it is allowed to carry.
+  */
+  --color-cta: #fde236;
+  --color-on-cta: #1c2641;
 
   /* ---- Semantic ----------------------------------------------------- */
-  --color-pos: #3ddc97; /* 11.3:1 — resolved, safe, caught up */
-  --color-pos-dim: rgba(61, 220, 151, 0.14);
-  --color-attn: #f0a93b; /* 9.9:1 — needs a look, never alarm */
-  --color-attn-dim: rgba(240, 169, 59, 0.14);
-  --color-link: #4f9cf9; /* 7.1:1 — interactive */
-  --color-link-dim: rgba(79, 156, 249, 0.14);
-  --color-calm: #9d8cff; /* 7.3:1 — agent presence, gentle */
-  --color-calm-dim: rgba(157, 140, 255, 0.14);
+  /*
+    Each accent serves three jobs: text on the canvas, text on its own 10%
+    wash (the StatusPill recipe — 12px semibold, so 4.5:1 applies), and a fill
+    carrying light text. The second number is that wash case, which is tighter.
+  */
+  --color-pos: #076b48; /* 6.0:1 · 5.2:1 on wash — resolved, safe, caught up */
+  --color-pos-dim: rgba(7, 107, 72, 0.1);
+  --color-attn: #7a4900; /* 6.9:1 · 6.0:1 — needs a look, never alarm */
+  --color-attn-dim: rgba(122, 73, 0, 0.1);
+  --color-link: #0a6e78; /* 5.4:1 · 4.7:1 — the UK action teal, darkened to clear */
+  --color-link-dim: rgba(10, 110, 120, 0.1);
+  --color-calm: #243e7a; /* 9.6:1 · 8.2:1 — agent presence, gentle */
+  --color-calm-dim: rgba(36, 62, 122, 0.1);
 
-  /* Brand red. 3.7:1 on the canvas — fails text contrast, so it is used only
-     as a fill or indicator with white on top (white on red is 5.5:1).
-     --color-red-fg is the paired text red at 7.2:1. */
-  --color-red: #cc2427;
-  --color-red-fg: #ff6b6b;
-  --color-red-dim: rgba(204, 36, 39, 0.16);
+  /* Capital One red. 4.7:1 on the canvas, so it clears body text on its own,
+     and white on it is 5.1:1. --color-red-fg is the darker paired red (7.1:1)
+     used where red sits on its own wash. */
+  --color-red: #d03027;
+  --color-red-fg: #a81115;
+  --color-red-dim: rgba(208, 48, 39, 0.1);
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 
@@ -62,7 +86,42 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
-  color-scheme: dark;
+  color-scheme: light;
+
+  /*
+    Keep anchored scrolls clear of the console's sticky top bar. Without this
+    the bar's own "Skip to main content" link landed the page 116px under it,
+    hiding the customer's name — the accessibility affordance delivering the
+    user to the one thing it was meant to reveal. It also governs where the
+    browser parks an element that Tab moves focus to.
+
+    The bar wraps as it narrows: measured at 69px on one line, 116px on two
+    (below 1280) and 171px on three (at 390). The two steps below cover each
+    of those. Overshooting only ever costs air above the target, and for the
+    skip link — whose target sits at the top of the document — it costs
+    nothing, because the scroll is clamped at zero.
+  */
+  scroll-padding-top: 11rem;
+}
+
+@media (min-width: 1280px) {
+  html {
+    scroll-padding-top: 5.5rem;
+  }
+}
+
+/*
+  Desktop density. At 100% browser zoom the app read as too large on a
+  laptop — the comfortable view was 80% zoom — so on screens 1024px and wider
+  the root scales to 80%. Type and spacing are rem-based and follow; tap
+  targets are pinned in px (min-h-[44px] and friends) so they stay at the
+  44px AAA size the accessibility audit checks. Phones and tablets keep the
+  browser default.
+*/
+@media (min-width: 1024px) {
+  html {
+    font-size: 80%;
+  }
 }
 
 body {
@@ -74,8 +133,8 @@ body {
 }
 
 /*
-  A faint noise field. Flat dark surfaces band badly on projectors and read as
-  cheap; 2.5% monochrome noise fixes both. Purely decorative and non-blocking.
+  A faint noise field. Flat surfaces band badly on projectors and read as
+  cheap; 2% monochrome noise fixes both. Purely decorative and non-blocking.
 */
 .noise::before {
   content: "";
@@ -83,30 +142,29 @@ body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.025;
+  opacity: 0.02;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* ------------------------------------------------------------- surfaces -- */
 
 /*
-  One glass recipe used everywhere: translucent fill, hairline edge, and a
-  single-pixel inner highlight along the top that reads as a lit edge.
+  One paper recipe used everywhere: near-white fill, hairline edge, and a soft
+  shadow tinted with the text colour rather than black, so the lift reads as
+  light falling on paper instead of a grey halo.
 */
 .glass {
   background: var(--color-glass);
   border: 1px solid var(--color-edge);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
-    0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 2px 0 rgba(28, 38, 65, 0.06);
 }
 
 .glass-2 {
   background: var(--color-glass-2);
   border: 1px solid var(--color-edge-2);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
-    0 8px 32px -8px rgba(0, 0, 0, 0.7);
+    0 1px 2px 0 rgba(28, 38, 65, 0.06),
+    0 12px 32px -12px rgba(28, 38, 65, 0.18);
 }
 
 /* A soft coloured bloom behind a card. Decorative; never carries meaning. */
@@ -114,15 +172,24 @@ body {
   position: relative;
   isolation: isolate;
 }
+/*
+  The horizontal insets are pinned to 0 on purpose. An absolutely positioned
+  pseudo-element still contributes to its scroll container's scrollable
+  overflow, so bleeding the glow sideways made every panel drag the page
+  sideways with it — 20% of each panel's width, which on a wide console came
+  to a quarter of the viewport. The glow still rises above the card (the top
+  inset is negative, and overflow above the top edge is unreachable, so it
+  costs nothing); it just no longer spills past its left and right edges.
+*/
 .bloom::after {
   content: "";
   position: absolute;
-  inset: -40% -20% 40% -20%;
+  inset: -40% 0 40% 0;
   z-index: -1;
   pointer-events: none;
   background: radial-gradient(
     ellipse at 50% 0%,
-    var(--bloom-color, rgba(79, 156, 249, 0.18)),
+    var(--bloom-color, rgba(10, 110, 120, 0.07)),
     transparent 70%
   );
 }
@@ -130,11 +197,11 @@ body {
 /* ---------------------------------------------------------------- focus -- */
 
 /*
-  One unmistakable focus style. White on a dark field clears every surface,
-  including coloured fills.
+  One unmistakable focus style. Ink on a light field clears every surface,
+  including the saturated accent fills.
 */
 :where(a, button, [role="button"], input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 2px solid #ffffff;
+  outline: 2px solid #1c2641;
   outline-offset: 2px;
   border-radius: 0.5rem;
 }
@@ -165,17 +232,17 @@ body {
   border-width: 0;
 }
 
-/* Dark scrollbars; a default light one wrecks the field. */
+/* Quiet scrollbars; the default chrome is heavier than anything else here. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  scrollbar-color: rgba(28, 38, 65, 0.22) transparent;
 }
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(28, 38, 65, 0.2);
   border-radius: 999px;
   border: 3px solid transparent;
   background-clip: content-box;
@@ -195,13 +262,13 @@ body {
 
 @keyframes c1-ring {
   0% {
-    box-shadow: 0 0 0 0 rgba(61, 220, 151, 0.4);
+    box-shadow: 0 0 0 0 rgba(7, 107, 72, 0.35);
   }
   70% {
-    box-shadow: 0 0 0 14px rgba(61, 220, 151, 0);
+    box-shadow: 0 0 0 14px rgba(7, 107, 72, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(61, 220, 151, 0);
+    box-shadow: 0 0 0 0 rgba(7, 107, 72, 0);
   }
 }
 
@@ -228,7 +295,7 @@ body {
   background: linear-gradient(
     to bottom,
     transparent,
-    rgba(79, 156, 249, 0.12),
+    rgba(10, 110, 120, 0.08),
     transparent
   );
   animation: c1-scan 3.5s linear infinite;
@@ -268,3 +335,77 @@ body {
     display: none;
   }
 }
+
+/* ------------------------------------------------------ reading options -- */
+/*
+  Customer-chosen reading options, applied to the phone only (PhoneFrame sets
+  the data attributes from device-local preferences). They override the
+  theme's own tokens inside the device, so every component follows without
+  knowing these options exist. `!important` is used where a user preference
+  has to beat a utility class — the customer's choice wins.
+*/
+[data-font="lexend"] {
+  font-family: var(--font-lexend), ui-sans-serif, system-ui, sans-serif;
+}
+[data-font="atkinson"] {
+  font-family: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Text size scales the whole screen, so layout reflows rather than clipping. */
+[data-size="large"] :is(#customer-main, header, nav, [role="dialog"]) {
+  zoom: 1.15;
+}
+[data-size="xlarge"] :is(#customer-main, header, nav, [role="dialog"]) {
+  zoom: 1.32;
+}
+/*
+  On a real phone the screen is already narrow: the full scale would leave
+  ~280px of usable width and read as "zoomed in". Still clearly larger, but
+  less, so lines don't break every two words.
+*/
+@media (max-width: 639px) {
+  [data-size="large"] :is(#customer-main, header, nav, [role="dialog"]) {
+    zoom: 1.08;
+  }
+  [data-size="xlarge"] :is(#customer-main, header, nav, [role="dialog"]) {
+    zoom: 1.18;
+  }
+}
+
+/* Wider spacing and no italics: both commonly reported to help dyslexic readers. */
+[data-spacing="wide"] * {
+  letter-spacing: 0.04em !important;
+  word-spacing: 0.14em !important;
+  line-height: 1.8 !important;
+  font-style: normal !important;
+}
+
+/* Soft tints. Text tokens still clear 4.5:1 on both. */
+[data-tint="cream"] {
+  --color-void: #fbf6e9;
+  --color-deep: #f3ecda;
+  --color-glass: #fffcf3;
+  --color-glass-2: #fffcf3;
+  --color-glass-3: #fffcf3;
+}
+[data-tint="blue"] {
+  --color-void: #edf3fb;
+  --color-deep: #e1eaf6;
+  --color-glass: #f6faff;
+  --color-glass-2: #f6faff;
+  --color-glass-3: #f6faff;
+}
+
+/* High contrast: every text token near-black, solid surfaces, strong edges. */
+[data-contrast="high"] {
+  --color-fg-2: #1c2641;
+  --color-fg-3: #2a3550;
+  --color-edge: rgba(28, 38, 65, 0.55);
+  --color-edge-2: rgba(28, 38, 65, 0.75);
+  --color-glass: #ffffff;
+  --color-glass-2: #ffffff;
+}
+[data-contrast="high"] :focus-visible {
+  outline-width: 3px !important;
+}
+

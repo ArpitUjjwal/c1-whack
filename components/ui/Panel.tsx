@@ -18,11 +18,11 @@ export function Panel({
   bloom?: "link" | "pos" | "attn" | "calm" | "red";
 } & Record<string, unknown>) {
   const bloomColor: Record<string, string> = {
-    link: "rgba(79,156,249,0.16)",
-    pos: "rgba(61,220,151,0.14)",
-    attn: "rgba(240,169,59,0.14)",
-    calm: "rgba(157,140,255,0.16)",
-    red: "rgba(204,36,39,0.16)",
+    link: "rgba(15,86,184,0.08)",
+    pos: "rgba(7,107,72,0.08)",
+    attn: "rgba(122,73,0,0.08)",
+    calm: "rgba(81,52,196,0.08)",
+    red: "rgba(204,36,39,0.08)",
   };
 
   return (

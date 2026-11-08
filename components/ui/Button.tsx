@@ -2,36 +2,48 @@
 
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 
-type Variant = "primary" | "calm" | "pos" | "danger" | "outline" | "ghost";
+type Variant = "brand" | "primary" | "calm" | "pos" | "danger" | "outline" | "ghost";
 type Size = "sm" | "md" | "lg";
 
+/*
+  No radius here. It lives on the variants instead, because the brand button is
+  a full pill and a `rounded-full` in the variant string would lose to a
+  `rounded-xl` in this one — Tailwind resolves that by stylesheet order, not by
+  the order the classes appear in the attribute.
+*/
 const base =
-  "relative inline-flex items-center justify-center gap-2 rounded-xl font-semibold " +
+  "relative inline-flex items-center justify-center gap-2 font-semibold " +
   "transition-[transform,background-color,border-color,box-shadow,opacity] duration-150 " +
   "active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-40 " +
   "disabled:active:scale-100 select-none";
 
 /*
-  Bright accents carry near-black text rather than white. On a dark field that
-  is both the higher-contrast choice and the one that reads as deliberate
-  rather than as a default button.
+  Accent fills carry canvas-light text (`text-void`), not ink. Every accent is
+  deep enough that this clears 6:1, and on a light field a saturated fill with
+  light type reads as deliberate rather than as a default button.
 */
 const variants: Record<Variant, string> = {
-  primary: "bg-link text-void hover:brightness-110",
-  calm: "bg-calm text-void hover:brightness-110",
-  pos: "bg-pos text-void hover:brightness-110",
-  // The one place red is allowed on an action: white on red is 5.5:1.
-  danger: "bg-red text-white hover:brightness-110",
+  /*
+    The Capital One UK primary: yellow fill, navy label, fully rounded. Navy on
+    this yellow is 11.2:1. `text-on-cta` is the only foreground the yellow is
+    allowed to carry — as a text colour on white it would be 1.30:1.
+  */
+  brand: "rounded-full bg-cta text-on-cta hover:brightness-[1.04]",
+  primary: "rounded-xl bg-link text-void hover:brightness-110",
+  calm: "rounded-xl bg-calm text-void hover:brightness-110",
+  pos: "rounded-xl bg-pos text-void hover:brightness-110",
+  // The one place red is allowed on an action: white on red is 5.1:1.
+  danger: "rounded-xl bg-red text-white hover:brightness-110",
   outline:
-    "bg-glass text-fg border border-edge hover:bg-glass-2 hover:border-edge-2",
-  ghost: "bg-transparent text-fg-2 hover:text-fg hover:bg-glass",
+    "rounded-xl bg-glass text-fg border border-edge hover:bg-glass-2 hover:border-edge-2",
+  ghost: "rounded-xl bg-transparent text-fg-2 hover:text-fg hover:bg-glass",
 };
 
 /** 44px minimum height at every size — comfortable, reachable targets. */
 const sizes: Record<Size, string> = {
-  sm: "min-h-11 px-3.5 text-sm",
-  md: "min-h-12 px-5 text-[0.9375rem]",
-  lg: "min-h-14 px-6 text-base",
+  sm: "min-h-[44px] px-3.5 text-sm",
+  md: "min-h-[48px] px-5 text-[0.9375rem]",
+  lg: "min-h-[56px] px-6 text-base",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

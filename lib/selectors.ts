@@ -18,6 +18,8 @@ export interface SafeToSpend {
   lines: SafeToSpendLine[];
   /** How far out the calculation looks. */
   horizonDays: number;
+  /** Where the balance comes from, e.g. "Northgate Bank, linked via Open Banking". */
+  source: string;
 }
 
 const HORIZON_DAYS = 14;
@@ -74,7 +76,7 @@ export function selectSafeToSpend(state: AppState): SafeToSpend {
   }
 
   const committed = round(lines.reduce((sum, l) => sum + l.amount, 0));
-  const balance = round(state.checking.balance);
+  const balance = round(state.current.balance);
 
   return {
     balance,
@@ -82,6 +84,7 @@ export function selectSafeToSpend(state: AppState): SafeToSpend {
     available: round(balance - committed),
     lines,
     horizonDays: HORIZON_DAYS,
+    source: `${state.current.provider}, linked via ${state.current.linkedVia}`,
   };
 }
 

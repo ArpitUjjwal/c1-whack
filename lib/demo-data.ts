@@ -2,10 +2,25 @@ import type { AppState } from "./types";
 import { isoDaysFromToday } from "./format";
 
 /**
+ * How Alex prefers to bank — preferences, not conditions. Adaptive Support
+ * never asks for a diagnosis or a reason, so nothing here says why. Exported
+ * so the Claude prompt reads the same words the agent sees.
+ */
+export const ALEX_PROFILE = [
+  "Plain language",
+  "One step at a time",
+  "No urgency or pressure language",
+  "Written messages over calls",
+];
+
+export const ALEX_SUPPORT_NOTE = "Keep it short and tell me the one thing to do.";
+
+/**
  * Alex — the persona at the centre of the demo.
  *
- * Alex has a checking account, a credit card with a payment that slipped past
- * its due date 6 days ago, and a 14-day gap since the last time the app was
+ * Alex has a Capital One UK credit card with a payment that slipped past its
+ * due date 6 days ago, a current account at another bank linked over Open
+ * Banking, and a 14-day gap since the last time the app was
  * opened. The gap is the point: avoidance is a symptom, not negligence, and
  * both surfaces are designed around that.
  */
@@ -19,38 +34,40 @@ export function createInitialState(): AppState {
       name: "Alex Rivera",
       firstName: "Alex",
       memberSince: "2021",
-      cognitiveProfile: [
-        "Prefers plain language",
-        "Prone to financial avoidance",
-        "One step at a time",
-        "No urgency or pressure language",
-      ],
+      cognitiveProfile: [...ALEX_PROFILE],
       daysSinceLastOpen: 14,
       openedAppToday: false,
-      supportNote:
-        "Checking my balance makes me panic, so I put it off. Then it gets worse. Please keep it short and tell me the one thing to do.",
+      supportNote: ALEX_SUPPORT_NOTE,
+      contactPreferences: {
+        channel: "in_app",
+        maxPerWeek: 2,
+        quietHours: { start: 21, end: 8 },
+        setOn: isoDaysFromToday(-65),
+      },
     },
-    checking: {
-      id: "chk-4417",
-      nickname: "Everyday Checking",
+    current: {
+      id: "cur-4417",
+      nickname: "Everyday current account",
+      provider: "Northgate Bank",
+      linkedVia: "Open Banking",
       balance: 1284.6,
-      routingNumber: "051405515",
-      accountNumber: "000123454417",
-      type: "Checking",
+      sortCode: "20-45-77",
+      accountNumber: "12344417",
+      type: "Current account",
     },
     credit: {
       id: "cc-8842",
-      nickname: "Quicksilver Card",
+      nickname: "Classic card",
       balance: 842.15,
       creditLimit: 3000,
       minimumDue: 41,
       dueDate: isoDaysFromToday(-6),
       daysOverdue: 6,
       status: "overdue",
-      lateFee: 29,
-      lateFeeWaived: false,
+      lateFee: 12,
+      lateFeeRefunded: false,
       extendedDueDate: null,
-      apr: 24.99,
+      apr: 34.9,
       accountNumber: "4417889200008842",
       type: "Credit Card",
     },
@@ -73,7 +90,7 @@ export function createInitialState(): AppState {
       },
       {
         id: "bill-electric",
-        name: "Electric",
+        name: "Energy",
         amount: 88.4,
         dueDate: isoDaysFromToday(11),
         autopay: true,
@@ -81,19 +98,29 @@ export function createInitialState(): AppState {
       },
     ],
     nudges: [],
+    /*
+      Spread over a fortnight, as a real cadence is: only the last one falls
+      inside the current seven days, so Clarity's first message is the
+      second contact this week, not the fourth.
+    */
+    contactLog: [
+      { channel: "email", at: now - 13 * 86_400_000, by: "system" },
+      { channel: "email", at: now - 9 * 86_400_000, by: "system" },
+      { channel: "email", at: now - 5 * 86_400_000, by: "system" },
+    ],
     timeline: [
       {
         id: "tl-seed-1",
         actor: "system",
         title: "Payment due date passed",
-        detail: "Minimum payment of $41.00 was not received.",
+        detail: "Minimum payment of £41.00 was not received. £12 late fee added.",
         at: now - 6 * 86_400_000,
       },
       {
         id: "tl-seed-2",
         actor: "system",
         title: "3 reminder emails sent — none opened",
-        detail: "Standard collections cadence. No response.",
+        detail: "Standard collections cadence, spread over the last fortnight. No response.",
         at: now - 4 * 86_400_000,
       },
       {
@@ -101,20 +128,17 @@ export function createInitialState(): AppState {
         actor: "system",
         title: "No app activity for 14 days",
         detail:
-          "Matches Alex's self-declared avoidance pattern. Flagged for proactive, low-pressure outreach instead of another reminder.",
+          "Three emails unopened. Flagged for one in-app message instead of another reminder.",
         at: now - 2 * 86_400_000,
         highlight: true,
       },
     ],
-    ui: {
-      focusMode: false,
-      focusDeclined: false,
-      focusOffers: 0,
-    },
+    supportCases: [],
     demo: {
       beat: -1,
       active: false,
     },
+    epoch: now,
     flags: {
       extensionOffered: false,
       extensionAccepted: false,

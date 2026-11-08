@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/Button";
 import { LiveDot } from "@/components/ui/LiveDot";
 import { Panel } from "@/components/ui/Panel";
 import { StatusPill } from "@/components/ui/StatusPill";
-import type { AppState } from "@/lib/types";
+import { CREDIT_FILE_GENERAL } from "@/lib/compliance";
+import type { Action, AppState } from "@/lib/types";
+import { TrustPanel } from "./TrustPanel";
 
 /**
  * Where the customer's accessibility needs are declared — and the reason the
@@ -16,10 +18,16 @@ export function HelpPanel({
   state,
   agentOnline,
   onMessageAgent,
+  dispatch,
+  adaptiveEnabled,
+  onToggleAdaptive,
 }: {
   state: AppState;
   agentOnline: boolean;
   onMessageAgent: (text: string) => void;
+  dispatch: (action: Action) => void;
+  adaptiveEnabled: boolean;
+  onToggleAdaptive: (on: boolean) => void;
 }) {
   const [draft, setDraft] = useState("");
   const [sent, setSent] = useState(false);
@@ -42,7 +50,7 @@ export function HelpPanel({
       <Panel as="article" className="p-5">
         <h3 className="font-semibold text-fg">How you like to be helped</h3>
         <p className="mt-1 text-sm text-fg-3">
-          You told us this, and everyone who helps you can see it.
+          Your preferences — no reason needed. Everyone who helps you can see them.
         </p>
         <ul className="mt-3 flex flex-wrap gap-2">
           {state.customer.cognitiveProfile.map((need) => (
@@ -55,6 +63,13 @@ export function HelpPanel({
           &ldquo;{state.customer.supportNote}&rdquo;
         </blockquote>
       </Panel>
+
+      <TrustPanel
+        state={state}
+        dispatch={dispatch}
+        adaptiveEnabled={adaptiveEnabled}
+        onToggleAdaptive={onToggleAdaptive}
+      />
 
       <Panel as="article" className="p-5">
         <div className="flex items-center justify-between gap-3">
@@ -102,8 +117,8 @@ export function HelpPanel({
           <div>
             <dt className="font-medium text-fg">Past due</dt>
             <dd className="text-fg-2">
-              A payment arrived later than its date. It isn&apos;t on your credit
-              report until it&apos;s 30 days late.
+              A payment that hasn&apos;t arrived by its date.{" "}
+              {CREDIT_FILE_GENERAL}
             </dd>
           </div>
           <div>

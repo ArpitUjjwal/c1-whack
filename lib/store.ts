@@ -15,6 +15,11 @@
  *   3. A persisted snapshot — so a tab opened or refreshed mid-demo rejoins at
  *      the current state instead of resetting Alex's situation.
  *
+ * What never travels: nothing the customer surface measures about the screen
+ * or the person (load, strain, Safe Mode, Time Machine use) is sent. Those
+ * stay on the device; the bank sees account facts and what the customer
+ * explicitly chooses to share in a support request.
+ *
  * Conflict resolution is a monotonic `rev`: a tab accepts an incoming state
  * only if its `rev` is higher than what it holds. For two windows that is
  * sufficient and, more importantly, completely predictable on stage.
@@ -29,22 +34,14 @@ import type {
   Role,
   Signal,
   SyncMessage,
-  Telemetry,
 } from "./types";
 
 const CHANNEL = "capital-one-accessible-credit";
-const STATE_KEY = "c1a:state:v2";
-const BUS_KEY = "c1a:bus:v2";
+const STATE_KEY = "c1a:state:v4";
+const BUS_KEY = "c1a:bus:v4";
 
 /** A peer counts as present if we have heard from it this recently. */
 const PRESENCE_TTL_MS = 6000;
-/**
- * Telemetry is kept far longer than presence. Browsers throttle timers in a
- * background tab, so a short TTL would blank the console's live lens whenever
- * the customer window lost focus — which is exactly when an agent is looking
- * at the console.
- */
-const TELEMETRY_TTL_MS = 45_000;
 const HEARTBEAT_MS = 2000;
 /** How often relative timestamps refresh. Coarse on purpose — low churn. */
 const TICK_MS = 5000;
@@ -56,13 +53,6 @@ export interface Snapshot {
   state: AppState | null;
   /** Other tabs we have heard from recently. */
   peers: Presence[];
-  /**
-   * Latest live measurements from the customer surface, wherever it is.
-   * Ephemeral: it rides on `signal` messages, is never persisted, and is
-   * dropped when the tab goes quiet. Keeping it out of `AppState` is what
-   * stops a once-a-second measurement from churning the revision counter.
-   */
-  telemetry: Telemetry | null;
   selfId: string;
   selfRole: Role | null;
   selfView: string;
@@ -79,7 +69,6 @@ interface Envelope {
 const SERVER_SNAPSHOT: Snapshot = {
   state: null,
   peers: [],
-  telemetry: null,
   selfId: "",
   selfRole: null,
   selfView: "",
@@ -98,8 +87,6 @@ class SyncStore {
   private state: AppState | null = null;
   private presence = new Map<string, Presence>();
   private seen = new Set<string>();
-  /** Latest telemetry, whether measured here or received from the other tab. */
-  private telemetry: Telemetry | null = null;
   private signalListeners = new Set<(signal: Signal, from: Role) => void>();
 
   private selfId = "";
@@ -150,22 +137,6 @@ class SyncStore {
     if (this.selfView === view) return;
     this.selfView = view;
     this.announce();
-    this.emit();
-  };
-
-  /**
-   * Publish this tab's live measurements. Called from a timer on the customer
-   * surface, never during render. Writes locally and broadcasts in one step so
-   * both windows read the same numbers.
-   */
-  publishTelemetry = (telemetry: Telemetry): void => {
-    this.telemetry = telemetry;
-    this.post({
-      kind: "signal",
-      from: this.selfId,
-      role: this.selfRole ?? "customer",
-      signal: { type: "telemetry", telemetry },
-    });
     this.emit();
   };
 
@@ -285,10 +256,6 @@ class SyncStore {
     for (const [id, presence] of this.presence) {
       if (t - presence.at >= PRESENCE_TTL_MS) this.presence.delete(id);
     }
-    // Genuinely stale measurements are still worse than none.
-    if (this.telemetry && t - this.telemetry.at >= TELEMETRY_TTL_MS) {
-      this.telemetry = null;
-    }
     // Always emits: the tick is also what advances relative timestamps.
     this.emit();
   };
@@ -341,10 +308,6 @@ class SyncStore {
         break;
       }
       case "signal": {
-        if (msg.signal.type === "telemetry") {
-          this.telemetry = msg.signal.telemetry;
-          this.emit();
-        }
         for (const listener of this.signalListeners) listener(msg.signal, msg.role);
         break;
       }
@@ -386,7 +349,6 @@ class SyncStore {
       peers: Array.from(this.presence.values()).filter(
         (peer) => peer.id !== this.selfId,
       ),
-      telemetry: this.telemetry,
       selfId: this.selfId,
       selfRole: this.selfRole,
       selfView: this.selfView,
@@ -414,14 +376,17 @@ function isIntactState(value: unknown): value is AppState {
   return (
     typeof s?.rev === "number" &&
     Boolean(s.credit) &&
-    Boolean(s.checking) &&
+    Boolean(s.current) &&
+    Boolean(s.customer?.contactPreferences) &&
     Boolean(s.customer) &&
     Boolean(s.flags) &&
-    Boolean(s.ui) &&
+    typeof s.epoch === "number" &&
+    Array.isArray(s.supportCases) &&
     Boolean(s.demo) &&
     Array.isArray(s.bills) &&
     Array.isArray(s.nudges) &&
-    Array.isArray(s.timeline)
+    Array.isArray(s.timeline) &&
+    Array.isArray(s.contactLog)
   );
 }
 

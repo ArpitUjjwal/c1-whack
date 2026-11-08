@@ -23,8 +23,7 @@ export function CustomerActivity({
       (e) =>
         !e.title.startsWith("Sent a gentle message") &&
         !e.title.startsWith("Agent note") &&
-        !e.title.startsWith("Opened ") &&
-        !e.title.startsWith("Offered Focus Mode"),
+        !e.title.startsWith("Opened "),
     )
     .slice(-3)
     .reverse();

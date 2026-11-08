@@ -24,6 +24,7 @@ import {
   type RewriteContext,
   type RewriteResult,
 } from "../engines/pressure";
+import { draftLocally, type AdvocateFacts } from "../advocate";
 
 export interface CoachAvailability {
   claude: boolean;
@@ -50,8 +51,8 @@ export async function checkCoachAvailability(): Promise<CoachAvailability> {
 }
 
 /** Instant, synchronous scoring. Always available. */
-export function analyseNow(text: string): PressureReport {
-  return analysePressure(text);
+export function analyseNow(text: string, locked: string[] = []): PressureReport {
+  return analysePressure(text, { locked });
 }
 
 /**
@@ -60,6 +61,7 @@ export function analyseNow(text: string): PressureReport {
  */
 export async function deepAnalyse(
   text: string,
+  locked: string[] = [],
   signal?: AbortSignal,
 ): Promise<PressureReport | null> {
   if (!text.trim()) return null;
@@ -67,7 +69,7 @@ export async function deepAnalyse(
     const res = await fetch("/api/coach/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, locked }),
       signal,
     });
     if (!res.ok) return null;
@@ -115,4 +117,29 @@ export async function rewrite(
 
   const local = rewriteLocally(text, ctx);
   return { ...local, source: "local" };
+}
+
+/**
+ * Draft a support request. Tries Claude with validated facts only, falls back
+ * to the deterministic local draft, and says which one it used.
+ */
+export async function draftSupportRequest(
+  facts: AdvocateFacts,
+): Promise<{ message: string; summary: string; source: "local" | "claude" }> {
+  try {
+    const res = await fetch("/api/advocate/draft", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ facts }),
+    });
+    if (res.ok) {
+      const body = (await res.json()) as { message?: string; summary?: string };
+      if (body.message?.trim() && body.summary?.trim()) {
+        return { message: body.message.trim(), summary: body.summary.trim(), source: "claude" };
+      }
+    }
+  } catch {
+    /* fall through to local */
+  }
+  return { ...draftLocally(facts), source: "local" };
 }

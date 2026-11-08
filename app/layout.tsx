@@ -8,7 +8,7 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Capital One · Accessible Credit",
+  title: "Capital One · Adaptive Support",
   description:
     "A two-surface prototype: a calm mobile banking app for customers with cognitive accessibility needs, and a live support console for the agents helping them.",
 };

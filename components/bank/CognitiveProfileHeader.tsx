@@ -3,6 +3,8 @@
 import { LiveDot } from "@/components/ui/LiveDot";
 import { Panel } from "@/components/ui/Panel";
 import { StatusPill } from "@/components/ui/StatusPill";
+import { CHANNEL_LABEL, quietHoursLabel } from "@/lib/contact";
+import { shortDate } from "@/lib/format";
 import type { AppState } from "@/lib/types";
 
 /**
@@ -12,22 +14,23 @@ import type { AppState } from "@/lib/types";
  * next five minutes should go. Putting them in the header rather than behind
  * a notes tab is the whole point: an accommodation nobody reads is not an
  * accommodation.
+ *
+ * Alex's contact preferences sit here too, as a banner: rules Alex set on a
+ * calm day, honoured on a hard one. They are consent, not inference.
  */
 export function CognitiveProfileHeader({
   state,
   customerOnline,
-  customerView,
 }: {
   state: AppState;
   customerOnline: boolean;
-  customerView: string | null;
 }) {
   const { customer } = state;
+  const prefs = customer.contactPreferences;
 
+  // Online or not, and nothing more: which screen Alex is on is not shared.
   const appStatus = customerOnline
-    ? customerView
-      ? `In the app now · ${customerView}`
-      : "In the app now"
+    ? "In the app now"
     : customer.openedAppToday
       ? "Opened today · now offline"
       : "Offline";
@@ -47,7 +50,7 @@ export function CognitiveProfileHeader({
               {customer.name}
             </h1>
             <p className="text-sm text-fg-3">
-              Customer since {customer.memberSince} · Checking ••••4417 · Card ••••8842
+              Customer since {customer.memberSince} · Card ••••8842 · Current account ••••4417 (linked)
             </p>
             <p className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-fg-2">
               <LiveDot online={customerOnline} />
@@ -58,7 +61,7 @@ export function CognitiveProfileHeader({
 
         <div className="max-w-xl">
           <h2 className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
-            Self-declared accessibility needs
+            How Alex prefers to bank
           </h2>
           <ul className="mt-2 flex flex-wrap gap-2">
             {customer.cognitiveProfile.map((need) => (
@@ -70,10 +73,23 @@ export function CognitiveProfileHeader({
         </div>
       </div>
 
-      <blockquote className="mt-5 rounded-xl border-l-2 border-calm bg-calm-dim p-4 text-[0.9375rem] text-fg-2">
+      <div
+        role="note"
+        aria-label="Alex's contact preferences"
+        className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-link/25 bg-link-dim px-4 py-3 text-sm"
+      >
+        <span className="font-semibold text-fg">
+          Alex&apos;s own rules, set on a calm day ({shortDate(prefs.setOn)}):
+        </span>
+        <span className="text-fg-2">{CHANNEL_LABEL[prefs.channel]} only</span>
+        <span className="text-fg-2">At most {prefs.maxPerWeek} a week</span>
+        <span className="text-fg-2">Never {quietHoursLabel(prefs)}</span>
+      </div>
+
+      <blockquote className="mt-3 rounded-xl border-l-2 border-calm bg-calm-dim p-4 text-[0.9375rem] text-fg-2">
         <p className="italic">&ldquo;{customer.supportNote}&rdquo;</p>
         <footer className="mt-1.5 text-xs font-medium text-calm not-italic">
-          — In Alex&apos;s own words, from the accessibility preferences screen
+          — Alex&apos;s own words. No reason given, none needed.
         </footer>
       </blockquote>
     </Panel>

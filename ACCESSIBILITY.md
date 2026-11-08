@@ -1,6 +1,6 @@
 # Accessibility
 
-How Clarity approaches cognitive accessibility, what it does about it, and how
+How Capital One Adaptive Support approaches cognitive accessibility, what it does about it, and how
 to check that it actually does it.
 
 The short version: **every accessibility claim in this product is measurable on
@@ -11,16 +11,26 @@ overlay and read the numbers live.
 
 ## 1. The problem being solved
 
-Alex Rivera has a checking account, a credit card six days past due, and
-fourteen days without opening the app. The fourteen days are the actual
-problem.
+Alex Rivera has a Capital One UK credit card six days past due (£41, with a
+£12 late fee already charged), a current account at another bank linked over
+Open Banking, and fourteen days without opening the app. The fourteen days are
+the actual problem.
 
-Alex's self-declared needs, shown verbatim to every agent:
+The setting is the UK throughout: pounds, "current account" and "sort code",
+"credit file" and "credit reference agencies". Capital One UK's own guidance is
+that a payment is reported once it is more than 30 days late, and a missed
+payment can stay on a credit file for six years; a payment plan does not stop
+that. Every screen reads that wording from one file, `lib/compliance.ts`, and
+states it cautiously ("should keep it off your credit file").
 
-- Prefers plain language
-- Prone to financial avoidance
+How Alex prefers to bank, shown verbatim to every agent. These are
+preferences, not conditions — Adaptive Support never asks for a diagnosis or a
+reason:
+
+- Plain language
 - One step at a time
 - No urgency or pressure language
+- Written messages over calls
 
 > "Checking my balance makes me panic, so I put it off. Then it gets worse.
 > Please keep it short and tell me the one thing to do."
@@ -41,7 +51,7 @@ making it worse.
 
 A balance is a number you still have to do arithmetic on, and that arithmetic
 is exactly what gets avoided. The app does the subtraction and shows only the
-answer; the working stays one tap down under "Show the math".
+answer; the working stays one tap down under "Show the maths".
 
 **The property that matters:** paying the overdue minimum leaves Safe-to-Spend
 *unchanged*, because the money was already set aside. The app says so before
@@ -56,9 +66,9 @@ the invariance holds for every arrangement (`lib/selectors.ts`).
 
 ### Progressive disclosure
 
-Routing numbers, full account numbers, APR, credit limits, statement mechanics
+Sort codes, full account numbers, APR, credit limits, statement mechanics
 and late-fee detail are all present and all collapsed by default. Someone
-looking for their balance should not have to read past a routing number to find
+looking for their balance should not have to read past a sort code to find
 it. `components/ui/Disclosure.tsx` wires `aria-expanded` / `aria-controls` and
 animates height only.
 
@@ -124,20 +134,57 @@ it*, not what they are doing:
 
 Three rules this is built under:
 
-1. **Nothing identifying is collected.** Timestamps of gesture *kinds*, in
-   memory, in the tab. Nothing is persisted and nothing leaves the device.
+1. **Nothing identifying is collected, and strain never leaves the device.**
+   Timestamps of gesture *kinds*, in memory, in the tab. Nothing is persisted.
+   **Nothing measured on the device crosses to the bank at all** — not strain,
+   not screen load, not Safe Mode state, not which screen Alex is on.
+   `lib/useCognitiveMonitor.ts` publishes nothing; the sync carries account
+   facts, presence ("in the app"), and requests Alex chooses to send. A bank
+   watching a customer's state of mind live is the inferred-health-data
+   problem, whatever the intention — and knowing that someone uses a
+   low-capacity mode is the profiling risk.
 2. **Every signal decays.** Confusion two minutes ago is not evidence about now.
 3. **The output is advisory.** It can offer to simplify; it can never act for
    the customer.
 
-### Focus Mode
+### Safe Mode
 
-At strain ≥ 45 the app offers to simplify. Accepting collapses the screen to one
-decision — nav hidden, type up, supporting detail gone — and the measured load
-drops below the 25 target.
+"I can't handle banking today" is one tap from the home screen and the
+welcome-back card, for anyone, with no reason asked. It is also offered on the
+device when strain reaches 45. Safe Mode reduces the app to one next step and
+the Time Machine — nav hidden, non-essential messages paused behind "read when
+you like" — and the measured load drops below the 25 target.
 
-**Verified end to end:** load 29 → **19** on acceptance, visible simultaneously
-on the agent console's Customer Lens.
+**Measured:** home-screen load 29 → **19**. (One pair, defined once as
+`FOCUS_LOAD_BEFORE` / `FOCUS_LOAD_AFTER` in `lib/engines/cognitive-load.ts`,
+and quoted by the simulation, the Friction Map and the demo.) Safe Mode is
+stored in device-local preferences (`lib/device.ts`), never in shared state.
+
+### Welcome-back
+
+After a gap of 7+ days the app opens on what changed — three lines at most —
+and one next step, instead of a pile of notifications. No "you missed", no
+count of days.
+
+### The Financial Time Machine
+
+`lib/engines/time-machine.ts` answers "what happens if I don't touch my
+finances for N days?" for N from 1 to 14. Each scheduled payment is sorted into
+*needs you* (paid by hand, or past its date), *pays itself* (Direct Debit) or
+*can wait* (after the break), with the projected balance after scheduled bills
+and a short plan naming the one thing to do first. Assumptions are printed:
+every listed payment goes through, no other income or spending, fictional demo
+data. It is read-only — it never pays, extends or waives — and what Alex tries
+in it is never shared.
+
+### The Financial Advocate
+
+On any *needs you* item, "I can't manage this one right now" opens one choice
+per screen — what's in the way, what would help, optionally what Alex could
+pay — then drafts a request from those validated facts (`lib/advocate.ts`;
+Claude when a key is set, a deterministic template otherwise). Alex sees
+**exactly what Capital One will see**, beside a **"not shared"** list, can edit
+it, and sends it. Nothing leaves without that press.
 
 #### Ethical guardrails (non-negotiable)
 
@@ -150,11 +197,15 @@ just intended:
   not mention a score, and it says nothing about how the customer is behaving.
   Being told an app has noticed you are struggling is its own small humiliation.
 - **It is always reversible**, with "Show me everything again" always visible.
-- **No means no, permanently.** Declining writes `ui.focusDeclined` to persisted
-  state and the app never asks again — on this session or any later one. The
-  customer's preference outranks the model.
-- **The meter is never shown to the customer.** The load and strain numbers live
-  on the agent console and the Judge overlay only.
+- **No means no, permanently.** Declining the on-device offer is remembered on
+  the device and the app never asks again. The customer's preference outranks
+  the model.
+- **The meter is never shown to the customer, and nothing is shown to the
+  bank.** Strain and load appear in one place: the Judge overlay on the
+  customer's own device.
+- **Alex can turn it all off.** The Help tab has a "What Adaptive Support
+  notices" panel — what it notices, what it never does — and an *Adaptive
+  screen* switch. Off means nothing is measured and nothing is offered.
 
 ---
 
@@ -169,7 +220,7 @@ told afterwards has already done the harm.
 
 | Category | Points each | Cap |
 | --- | --- | --- |
-| Consequence and threat framing | 20 | 60 |
+| Threats: escalation, vague consequences, "will be reported" | 20 | 60 |
 | Blame directed at the customer | 18 | 54 |
 | Urgency and compulsion | 14 | 42 |
 | Jargon without a plain-language gloss | 8 | 24 |
@@ -177,6 +228,19 @@ told afterwards has already done the harm.
 | Reading level above grade 8 | 4 | 20 |
 | More than one decision in one message | 10 | 10 |
 | Passive voice hiding who acts | 5 | 10 |
+| Consequence with no date, or said twice | 10 | 30 |
+
+**Threats are not consequences.** Softening tone is the product; deleting
+information the customer needs to decide is not, and UK rules expect
+communications to be clear, fair and not misleading. So a real consequence
+stated **once, calmly, with a specific date** scores 0 and is underlined as
+*allowed*. An undated one, or a second mention, scores.
+
+**Locked wording.** The composer can attach compliance-required segments — the
+dated credit-file line and a free-debt-advice signpost (illustrative, after
+FCA CONC 7). They sit outside the editable draft, are scored but never
+penalised, are never sent to either rewriter, and are appended verbatim on
+send.
 
 Every finding names the exact span that caused it, the reason in one actionable
 sentence, and the points it contributed. No model, no training data, no opacity
@@ -185,18 +249,33 @@ sentence, and the points it contributed. No model, no training data, no opacity
 **Measured example:**
 
 > "You must pay the full balance immediately to avoid collections. Failure to do
-> so will be reported to the credit bureaus."
+> so will be reported to the credit reference agencies."
 
 scores **100/100 — "Likely to cause another silence"**. One click rewrites it to:
 
-> "You can pay the full balance whenever you're ready. Nothing goes on your
-> credit file before 30 days."
+> "You can pay the full balance. Paying it by Sunday 29 November should keep it
+> off your credit file."
 
-which scores **0**, with every factual claim intact.
+which scores **0**. The threats are gone; the one real consequence is still
+there, once, with its date. (The date is the due date plus 28 days, leaving
+two days' margin before Capital One's 30-day reporting point.) The Claude
+rewrite prompt carries the same rule.
 
 A message in the harmful band requires a second, explicit confirmation to send.
 It is not hard-blocked — agents need autonomy — but it says plainly what the
 account history predicts.
+
+### Contact preferences and the frequency guard
+
+Alex sets contact rules on a calm day — channel, at most *N* messages a week,
+quiet hours — in the app's Help tab, in the spirit of Money and Mental Health's
+Advance Choice Documents. They are consent, not inference, so they cannot be
+gamed and they need no reading of anyone's state. The console shows them as a
+banner under Alex's needs; the composer shows which
+message this would be this week ("2nd message this week") and warn, with a
+second press required, when a send would break a rule. The evidence is printed
+beside it: people getting five or more creditor calls a month were far more
+likely to say contact harmed their mental health (91% against 57%).
 
 ### Readability
 
@@ -212,19 +291,39 @@ mid-conversation when the customer acts. Each variant carries a **"Don't say"**
 column with the reason — most harm in an arrears conversation comes from
 standard phrasing nobody chose:
 
-- "You must…" → pressure is what produced the 14-day avoidance
+- "You must…" → pressure is what preceded the 14 quiet days
 - "Delinquent", "default", "collections" → escalates without informing
+- Leading with a fee refund → goodwill offered before paying rewards going quiet
 - Stacking options → Alex processes one step at a time
-- Mentioning the 14-day gap → naming the avoidance makes it shameful
+- Mentioning the 14-day gap → naming it makes it shameful
 
-### The Silence Model, shown not asserted
+### The Care Centre: support that starts before a payment fails
 
-`lib/engines/silence-model.ts` treats not-opening-the-app as information. Six
-features, every weight and contribution on screen, and the panel states plainly
-that the weights are **hand-tuned, not trained on any data**. It also names what
-a real deployment would need: validation against outcomes, fairness testing
-across protected groups, and a route for a customer to see and contest their own
-score.
+Requests arrive only when a customer sends one. Each shows what Alex shared
+— summary, facts, help requested, contact preference — beside a
+**"deliberately not shared"** box, with an access log of who opened it.
+
+The **Financial Rescue Simulator** (`lib/engines/rescue-sim.ts`) lays out three
+pathways for that request from the customer's side: the standard process (four
+contacts, likely reported at 30 days), an accessible guided payment (one
+message, three small steps, no change to terms) and specialist review. No
+pathway assumes an extension or a fee waiver. Choosing one updates Alex's phone
+instantly.
+
+**Concessions follow policy, never the software or a self-report.** An
+arrangement needs an illustrative eligibility check (asked for by the customer,
+none in the last 12 months, within adviser authority) and a second approver. A
+fee refund only unlocks after payment, once a year.
+
+The **Accessibility Friction Map** shows where *journeys* get stuck — from
+illustrative, aggregated task-completion data, never individuals and never
+mental-health classifications — so the bank can see whether its accessible
+journeys actually remove barriers.
+
+The 30-day simulation runs three lanes: the standard cadence, **the design
+alone** (one in-app message, welcome-back and Safe Mode, the Time Machine, a
+guided payment — nothing given away, the fee stands), and the design plus
+optional concessions after approval. The design-only lane resolves on day 4.
 
 ---
 
@@ -276,9 +375,9 @@ audit's own over-strict reading of labelled radio inputs.
 
 | Check | Result |
 | --- | --- |
-| Text contrast | 245/245 pass WCAG AA · worst 4.69:1 |
-| Touch targets | Pass at the 44px AAA bar |
-| Heading structure | 14 headings in order |
+| Text contrast | 344/344 pass WCAG AA · worst 4.69:1 |
+| Touch targets | 23/23 pass at the 44px AAA bar |
+| Heading structure | 15 headings in order |
 | Live regions | 5 present, none assertive |
 | Reduced motion | Honoured |
 
@@ -295,11 +394,16 @@ credible:
 - The cognitive-load formula is a **heuristic**, not validated against any
   measure of real cognitive effort. It is shown beside its own output so it can
   be argued with.
-- The Silence Model is **illustrative and hand-tuned**. It is not trained, not
-  validated, and not fairness-tested.
+- The Rescue Simulator, eligibility rules and Friction Map use **illustrative**
+  logic and data, not Capital One policy or real task-completion figures.
+- Device-local preferences share an origin with the console in this demo; on a
+  real phone they would live in the device's own storage.
 - The Pressure Index lexicon is **English-only** and will miss harm expressed
   without flagged vocabulary. The optional Claude pass exists precisely to cover
   that gap, and the local engine runs regardless.
 - The 30-day simulation uses **assumed** engagement constants, printed under it.
+- Compliance wording (`lib/compliance.ts`) is **illustrative**. The reporting
+  rule follows Capital One UK's published guidance; a real deployment would
+  take every locked segment verbatim from Capital One's compliance team.
 - Screen-reader testing has been done against the accessibility tree and
   semantics, **not** with a full manual pass in JAWS, NVDA or VoiceOver.

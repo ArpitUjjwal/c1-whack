@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 
 /**
- * The Focus Mode offer.
+ * The Safe Mode offer.
  *
  * This is the only point at which the adaptive layer speaks to the customer,
  * and the wording carries real weight. It does not diagnose, it does not

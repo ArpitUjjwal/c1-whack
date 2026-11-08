@@ -1,15 +1,16 @@
 "use client";
 
-export type CustomerTab = "home" | "accounts" | "help";
+export type CustomerTab = "home" | "ahead" | "accounts" | "help";
 
 const tabs: { id: CustomerTab; label: string }[] = [
   { id: "home", label: "Home" },
+  { id: "ahead", label: "Look ahead" },
   { id: "accounts", label: "Accounts" },
   { id: "help", label: "Help" },
 ];
 
 /**
- * Three destinations, not nine. Every tab is labelled in words, and the active
+ * Four destinations, not nine. Every tab is labelled in words, and the active
  * one is announced with `aria-current` rather than signalled by colour alone.
  *
  * `data-nav` marks these as navigation for the load meter: moving between

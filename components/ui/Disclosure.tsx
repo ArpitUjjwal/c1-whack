@@ -7,7 +7,7 @@ import { useId, useState, type ReactNode } from "react";
  * Progressive disclosure.
  *
  * Anything a customer does not need in order to make the next decision —
- * routing numbers, APR, statement mechanics, the arithmetic behind a figure —
+ * sort codes, APR, statement mechanics, the arithmetic behind a figure —
  * lives in here. Collapsed by default, one tap away, properly announced.
  *
  * `onToggle` lets the cognitive-signal collector notice churn: opening and

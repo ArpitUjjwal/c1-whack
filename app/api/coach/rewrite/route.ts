@@ -5,9 +5,13 @@ import { COACH_SYSTEM } from "@/lib/ai/prompt";
  * Rewrite a draft so it says the same true thing without applying pressure.
  *
  * The constraint that matters is that the facts survive. A rewrite that
- * quietly drops the amount, or implies nothing is owed, would be a worse
- * failure than the hostile original — so the instruction below is explicit
- * about keeping every factual claim and changing only how it lands.
+ * quietly drops the amount, implies nothing is owed, or deletes a real
+ * consequence would be a worse failure than the hostile original — and in
+ * the UK, a misleading one. So the instruction separates threats (remove)
+ * from a real consequence (keep, once, calmly, with the date).
+ *
+ * Locked compliance wording is never sent here to be rewritten. It is passed
+ * only so the rewrite does not repeat or contradict it.
  */
 export async function POST(request: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -15,17 +19,27 @@ export async function POST(request: Request) {
   }
 
   let text: string;
-  let context: { amount?: string; agentName?: string } = {};
+  let context: { amount?: string; agentName?: string; payBy?: string; locked?: string[] } = {};
   try {
     const body = (await request.json()) as {
       text?: unknown;
-      context?: { amount?: string; agentName?: string };
+      context?: { amount?: unknown; agentName?: unknown; payBy?: unknown; locked?: unknown };
     };
     if (typeof body.text !== "string" || !body.text.trim()) {
       return Response.json({ error: "bad_request" }, { status: 400 });
     }
     text = body.text.slice(0, 2000);
-    context = body.context ?? {};
+    const c = body.context ?? {};
+    const str = (v: unknown, max: number) =>
+      typeof v === "string" ? v.slice(0, max) : undefined;
+    context = {
+      amount: str(c.amount, 40),
+      agentName: str(c.agentName, 60),
+      payBy: str(c.payBy, 60),
+      locked: Array.isArray(c.locked)
+        ? c.locked.filter((x): x is string => typeof x === "string").slice(0, 4).map((x) => x.slice(0, 300))
+        : [],
+    };
   } catch {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
@@ -46,11 +60,17 @@ export async function POST(request: Request) {
 
 Rules:
 - Keep every factual claim true. The amount owed is ${context.amount ?? "the minimum payment"}; do not change it, and do not imply nothing is owed.
-- No urgency, no deadline, no blame, no consequence framing, no collections vocabulary.
-- Short sentences. US grade 8 or below.
+- Remove threats, escalation, blame, manufactured urgency and vague consequences ("consequences", "further action", "to avoid collections"). No collections vocabulary.
+- A real consequence is information, not a threat. If the draft states or implies one (for example, credit reporting), keep it: say it once, calmly, with the date${context.payBy ? ` — "Paying it by ${context.payBy} should keep it off your credit file."` : ""}. Never invent a consequence and never delete a real one.${
+            context.locked?.length
+              ? `\n- This wording will be appended verbatim after your message. Do not repeat it, paraphrase it, or contradict it:\n${context.locked.map((l) => `  - ${l}`).join("\n")}`
+              : ""
+          }
+- UK English and UK terms: pounds, "credit file", "credit reference agencies".
+- Short sentences. Plain English, Flesch–Kincaid grade 8 or below.
 - Exactly one thing to do, and say it plainly.
 - Warm, adult, not saccharine. ${context.agentName ? `You are ${context.agentName}.` : ""}
-- Under 55 words.
+- Under 60 words.
 
 Reply with the rewritten message and nothing else — no preamble, no quotes, no explanation.
 

@@ -11,10 +11,10 @@ import type { AppState } from "@/lib/types";
 /**
  * The accounts list.
  *
- * Each account shows one number and one sentence. Routing numbers, full
+ * Each account shows one number and one sentence. Sort codes, full
  * account numbers, APR, limits and statement mechanics are all real and all
  * present — behind "Show account details", because someone looking for their
- * balance should not have to read past a routing number to find it.
+ * balance should not have to read past a sort code to find it.
  */
 export function AccountsPanel({
   state,
@@ -23,7 +23,7 @@ export function AccountsPanel({
   state: AppState;
   onDisclosureToggle?: (open: boolean) => void;
 }) {
-  const { checking, credit } = state;
+  const { current, credit } = state;
   const utilisation = selectCreditUtilisation(state);
 
   const creditStatus = (() => {
@@ -45,34 +45,35 @@ export function AccountsPanel({
         Your accounts
       </h2>
 
-      {/* ---------------------------------------------------------- checking */}
+      {/* --------------------------------------- linked current account */}
       <Panel as="article" className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
           <div className="min-w-0">
-            <h3 className="font-semibold text-fg">{checking.nickname}</h3>
+            <h3 className="font-semibold text-fg">{current.nickname}</h3>
             <p className="text-sm text-fg-3">
-              Checking {maskTail(checking.accountNumber)}
+              {current.provider} {maskTail(current.accountNumber)}
             </p>
           </div>
-          <StatusPill tone="pos">Open</StatusPill>
+          <StatusPill tone="link">Linked</StatusPill>
         </div>
 
         <p className="display tnum mt-3 text-[2rem] text-fg">
-          {money(checking.balance)}
+          {money(current.balance)}
         </p>
         <p className="text-sm text-fg-3">Money in the account right now</p>
 
         <div className="mt-4 border-t border-edge pt-3">
           <Disclosure label="Show account details" onToggle={onDisclosureToggle}>
             <dl className="space-y-2 text-sm">
-              <DetailRow label="Account number" value={checking.accountNumber} mono />
-              <DetailRow label="Routing number" value={checking.routingNumber} mono />
-              <DetailRow label="Account type" value="Everyday Checking" />
-              <DetailRow label="Member since" value={state.customer.memberSince} />
+              <DetailRow label="Sort code" value={current.sortCode} mono />
+              <DetailRow label="Account number" value={current.accountNumber} mono />
+              <DetailRow label="Bank" value={current.provider} />
+              <DetailRow label="Linked via" value={current.linkedVia} />
             </dl>
             <p className="mt-3 text-xs text-fg-3">
-              You&apos;ll need these two numbers to set up direct deposit or pay
-              someone by bank transfer. Nothing else uses them.
+              This account is at {current.provider}. We can see the balance so
+              your safe-to-spend number is right, and card payments come from
+              here. We can&apos;t move money out of it any other way.
             </p>
           </Disclosure>
         </div>
@@ -122,7 +123,7 @@ export function AccountsPanel({
               <DetailRow label="Interest rate (APR)" value={`${credit.apr}%`} />
               <DetailRow
                 label="Late fee"
-                value={credit.lateFeeWaived ? "Waived" : money(credit.lateFee)}
+                value={credit.lateFeeRefunded ? `${money(credit.lateFee)} — refunded` : money(credit.lateFee)}
               />
             </dl>
             <p className="mt-3 text-xs text-fg-3">

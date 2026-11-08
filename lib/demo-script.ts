@@ -26,78 +26,105 @@ export interface Beat {
 
 export const BEATS: Beat[] = [
   {
-    caption: "Alex hasn't opened the app in 14 days. Three reminder emails, none opened.",
-    look: "bank",
-    note: "Set the scene. The silence is the problem, not the $41.",
+    caption:
+      "Nearly half of people behind on payments feel harassed (49%) or overwhelmed (48%) by the volume of contact from creditors. — Money and Mental Health",
+    look: "both",
+    note: "Open on the number. Then: most banking apps assume you can manage your money today. What about the days you can't?",
   },
   {
     caption:
-      "The Silence Model reads that silence as information — six features, weights on screen.",
-    look: "bank",
-    note: "Point at the contributions. Say the weights are hand-tuned, not trained.",
+      "Alex hasn't opened the app in 14 days. Instead of a pile of notifications: what changed, in three lines, and one next step.",
+    look: "customer",
+    note: "Welcome-back. No guilt language, no counts of days.",
   },
   {
-    caption: "The agent waives the late fee first, before asking for anything.",
-    look: "bank",
-    action: { type: "WAIVE_LATE_FEE" },
-    note: "$29 of trust, spent before the ask.",
+    caption:
+      "“I can't handle banking today.” One tap — no diagnosis, no reason asked. The app becomes Safe Mode.",
+    look: "customer",
+    signal: { to: "customer", action: "enter_safe_mode" },
+    note: "Available to anyone. And the bank is never told: Safe Mode lives on the phone.",
   },
   {
-    caption: "Now watch what the standard collections script would have said.",
+    caption:
+      "The Financial Time Machine: if Alex steps away for a week, what actually needs attention?",
+    look: "customer",
+    signal: { to: "customer", action: "time_machine_week" },
+    note: "Card minimum needs you. Rent: check it's arranged. Phone and energy pay themselves. Projected balance, assumptions printed. It never acts.",
+  },
+  {
+    caption:
+      "“I can't manage this one right now.” The Advocate prepares the request — and shows exactly what will be shared, and what won't.",
+    look: "customer",
+    signal: { to: "customer", action: "advocate_open" },
+    note: "Read the 'Not shared' list out loud. No feelings, no diagnosis, nothing from Safe Mode or the Time Machine.",
+  },
+  {
+    caption: "Alex sends it. Nothing left the phone until Alex pressed the button.",
+    look: "both",
+    signal: { to: "customer", action: "advocate_send" },
+  },
+  {
+    caption:
+      "Request #1042 lands in the Care Centre instantly — beside it, what was deliberately not shared.",
+    look: "bank",
+    note: "Point at the access log: opening the case was recorded. Alex never has to explain twice.",
+  },
+  {
+    caption:
+      "The Rescue Simulator: three pathways, seen from Alex's side, before anything is offered.",
+    look: "bank",
+    note: "Standard process: four contacts, reported at 30 days. No pathway assumes an extension or a fee waiver.",
+  },
+  {
+    caption: "Before replying, watch what the standard collections script would have said.",
     look: "bank",
     signal: { to: "bank", action: "load_bad_example" },
     note: "The Pressure Index spikes as the words land.",
   },
   {
-    caption:
-      "100 out of 100. Every harmful phrase is underlined, with the reason and the points.",
-    look: "bank",
-    note: "This is the message that causes the next two weeks of silence.",
-  },
-  {
-    caption: "One click rewrites it.",
+    caption: "One click rewrites it. The threats go; the one real date stays.",
     look: "bank",
     signal: { to: "bank", action: "rewrite_draft" },
-    note: "100 → 0, and the meaning survives.",
-  },
-  {
-    caption: "Sent. It reaches Alex's phone instantly, and calmly.",
-    look: "both",
-    signal: { to: "bank", action: "send_draft" },
-  },
-  {
-    caption: "Alex is on the home screen, and starting to struggle with it.",
-    look: "customer",
-    signal: { to: "customer", action: "inject_strain" },
-    note: "Scroll thrash and taps that hit nothing. Strain crosses 45.",
+    note: "100 → 0. Removing a real consequence would be misleading, so it's kept — once, calmly, with the date.",
   },
   {
     caption:
-      "The app offers to simplify. It never says why, never diagnoses, and takes no for an answer.",
-    look: "customer",
-    note: "Read the offer wording out loud — that is the accessibility work.",
+      "Sent — the 2nd message this week, inside Alex's own limit. On the phone it waits quietly: Safe Mode holds messages until Alex wants them.",
+    look: "both",
+    signal: { to: "bank", action: "send_draft" },
+    note: "Point at the frequency guard, then at '1 message — read when you like' on the phone.",
   },
   {
-    caption: "Focus Mode: one decision, nothing else. Load drops below 25.",
+    caption: "The agent offers guided payment support.",
     look: "both",
-    action: { type: "SET_FOCUS_MODE", on: true },
-    note: "Watch the Customer Lens on the console drop at the same moment.",
+    action: { type: "OFFER_GUIDED_PAYMENT" },
+    note: "Fits the request: Alex asked for a simpler way, not different terms.",
+  },
+  {
+    caption: "Alex's screen updates: the same payment, in three small steps.",
+    look: "customer",
   },
   {
     caption: "Alex pays. Safe-to-Spend doesn't move — that money was already set aside.",
     look: "both",
     action: { type: "PAY_CREDIT", amount: 41 },
-    note: "The strongest single line in the product.",
   },
   {
     caption:
-      "The console rewrites itself mid-sentence: balances, timeline, and the agent's script.",
+      "Across everyone: the Friction Map shows where journeys — not people — get stuck.",
     look: "bank",
+    note: "Is the accessibility feature actually removing the barrier? Illustrative, aggregated data.",
   },
   {
     caption:
-      "Thirty days under both policies. Standard: never resolved, $29, six years on file. Clarity: day four, nothing.",
+      "Thirty days, three policies. Standard: never resolved, reported. the design alone: resolved on day four, nothing given away.",
     look: "bank",
-    note: "Run the simulation. Then stop talking.",
+    note: "Run the simulation.",
+  },
+  {
+    caption:
+      "Most banks respond when a payment fails. This helps customers ask for support before they reach that point.",
+    look: "both",
+    note: "Then stop talking.",
   },
 ];

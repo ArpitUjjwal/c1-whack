@@ -60,13 +60,18 @@ export function SafeToSpendCard({
 
       <div className="mt-4 border-t border-edge pt-3">
         <Disclosure
-          label="Show the math"
-          openLabel="Hide the math"
+          label="Show the maths"
+          openLabel="Hide the maths"
           onToggle={onDisclosureToggle}
         >
           <dl className="space-y-2.5 text-[0.9375rem]">
             <div className="flex items-baseline justify-between gap-4">
-              <dt className="text-fg-2">In your checking account</dt>
+              <dt className="text-fg-2">
+                In your current account
+                <span className="block text-xs text-fg-3">
+                  {safe.source}
+                </span>
+              </dt>
               <dd className="tnum font-semibold text-fg">{money(safe.balance)}</dd>
             </div>
 

@@ -16,15 +16,22 @@ export type Actor = "customer" | "agent" | "system";
 /** Emotional register of a message shown to the customer. Never "danger". */
 export type Tone = "calm" | "warm" | "celebrate";
 
-export interface CheckingAccount {
+/**
+ * Alex's everyday account. Capital One UK only offers credit cards, so this is
+ * a current account at another bank, linked read-only over Open Banking. It
+ * is what Safe-to-Spend reads and what a card payment is made from.
+ */
+export interface CurrentAccount {
   id: string;
   nickname: string;
-  /** Cents are avoided on purpose: plain dollars keep the demo numbers legible. */
+  /** The other bank. Fictional. */
+  provider: string;
+  linkedVia: "Open Banking";
   balance: number;
   /** Hidden behind progressive disclosure — jargon stays out of the default view. */
-  routingNumber: string;
+  sortCode: string;
   accountNumber: string;
-  type: "Checking";
+  type: "Current account";
 }
 
 export type CreditStatus =
@@ -49,7 +56,11 @@ export interface CreditAccount {
   daysOverdue: number;
   status: CreditStatus;
   lateFee: number;
-  lateFeeWaived: boolean;
+  /**
+   * Goodwill is conditional on action: the fee can be refunded once a year,
+   * after the customer has paid. Going quiet never earns it.
+   */
+  lateFeeRefunded: boolean;
   /** ISO date the payment is now due, when an extension has been granted. */
   extendedDueDate: string | null;
   apr: number;
@@ -111,6 +122,32 @@ export interface CustomerProfile {
   openedAppToday: boolean;
   /** Free-text context the customer chose to share with support. */
   supportNote: string;
+  /** Rules Alex set on a calm day for how we may contact them. */
+  contactPreferences: ContactPreferences;
+}
+
+export type ContactChannel = "in_app" | "email" | "phone" | "letter";
+
+/**
+ * Consent-based contact rules, in the spirit of an Advance Choice Document:
+ * set by the customer when things are fine, honoured when they are not. The
+ * console shows them and warns on a breach; it never infers them.
+ */
+export interface ContactPreferences {
+  channel: ContactChannel;
+  /** At most this many messages in any rolling seven days. */
+  maxPerWeek: number;
+  /** Local hours, 0–23. No contact from `start` until `end`. */
+  quietHours: { start: number; end: number };
+  /** ISO date the customer set these. */
+  setOn: string;
+}
+
+/** One contact made with the customer, on any channel. */
+export interface ContactRecord {
+  channel: ContactChannel;
+  at: number;
+  by: Actor;
 }
 
 export interface Flags {
@@ -125,45 +162,11 @@ export interface Flags {
   winsCount: number;
 }
 
-/**
- * Interface state the customer owns and the agent can see.
- *
- * Focus Mode lives in shared state on purpose: the console needs to know the
- * screen has been simplified (it changes what the agent should say), and the
- * customer's decision to decline it must survive a refresh so the app never
- * asks twice.
- */
-export interface UiState {
-  focusMode: boolean;
-  /** Set once the customer turns the offer down. The app then stops asking. */
-  focusDeclined: boolean;
-  /** How many times Focus Mode has been offered this session. */
-  focusOffers: number;
-}
-
 /** Demo Director position. Shared so both windows show the same beat. */
 export interface DemoState {
   /** -1 when the director is not running. */
   beat: number;
   active: boolean;
-}
-
-/**
- * Live, per-tab measurements. Deliberately NOT part of `AppState`: these
- * change every second, and pushing them through the revision-counted state
- * would churn it constantly. They ride on an ephemeral `signal` message and
- * are dropped when the tab goes quiet, exactly like presence.
- */
-export interface Telemetry {
-  /** Cognitive load of the screen currently rendered. */
-  load: number;
-  loadBand: string;
-  /** Interaction strain derived from how the customer is behaving. */
-  strain: number;
-  strainBand: string;
-  focusMode: boolean;
-  view: string;
-  at: number;
 }
 
 /**
@@ -174,24 +177,111 @@ export type DemoAction =
   | "inject_strain"
   | "load_bad_example"
   | "rewrite_draft"
-  | "send_draft";
+  | "send_draft"
+  | "enter_safe_mode"
+  | "time_machine_week"
+  | "advocate_open"
+  | "advocate_send";
 
-export type Signal =
-  | { type: "telemetry"; telemetry: Telemetry }
-  | { type: "demo_action"; action: DemoAction };
+/**
+ * Ephemeral cross-window instructions. Deliberately only demo choreography:
+ * nothing measured on the customer's device is ever sent.
+ */
+export type Signal = { type: "demo_action"; action: DemoAction };
+
+/* ------------------------------------------------------------ support -- */
+
+/** What got in the way. Chosen by the customer, never inferred. */
+export type Difficulty =
+  /** Capacity, not money — and no reason asked for. */
+  | "cant_face_it"
+  | "cant_pay_full"
+  | "dont_understand"
+  | "cant_find_how"
+  | "something_else";
+
+/** The kind of help the customer asked for. */
+export type HelpWanted = "simpler" | "explain" | "arrangement" | "call_back";
+
+/** How the bank chose to respond, from the Rescue Simulator. */
+export type PathwayId = "standard" | "guided" | "specialist";
+
+export type CaseStatus =
+  /** Arrived, nobody has acted yet. */
+  | "review_needed"
+  /** The bank offered an accessible, step-by-step way to pay. */
+  | "guided_offered"
+  /** Referred to a specialist adviser, who assesses under real policy. */
+  | "specialist_review"
+  /** An arrangement passed eligibility and a second approval, and was offered. */
+  | "arrangement_offered"
+  | "resolved";
+
+/**
+ * A consent-based support handoff.
+ *
+ * Everything in here was reviewed by the customer before it was sent — the
+ * whole object is "what Capital One will see". There is deliberately no
+ * field for mood, diagnosis, strain, Safe Mode, or anything the customer
+ * explored in the Time Machine.
+ */
+export interface SupportCase {
+  id: string;
+  /** Human reference, e.g. 1042. */
+  ref: number;
+  createdAt: number;
+  status: CaseStatus;
+  /** The task the customer was attempting, in plain words. */
+  task: string;
+  amount: number;
+  /** ISO date the payment was due. */
+  dueDate: string;
+  difficulty: Difficulty;
+  helpWanted: HelpWanted;
+  /** Optional: what the customer said they could manage, and when. */
+  canPay: { amount: number; date: string } | null;
+  contact: ContactChannel;
+  /** The customer's own choice to ask for brief replies. */
+  keepRepliesShort: boolean;
+  /** The request in the customer's voice, as they approved it. */
+  message: string;
+  /** One-line summary for the support team. */
+  summary: string;
+  draftedBy: "local" | "claude";
+  pathway: PathwayId | null;
+  /** ISO date a specialist will reply by, once referred. */
+  replyBy: string | null;
+  /** Every time someone at the bank looked at or acted on the case. */
+  accessLog: { who: string; what: string; at: number }[];
+}
+
+/** The fields a customer fills in; the reducer adds the rest. */
+export type SupportRequest = Omit<
+  SupportCase,
+  "id" | "ref" | "createdAt" | "status" | "pathway" | "replyBy" | "accessLog"
+>;
 
 export interface AppState {
   /** Monotonic revision. Receivers only accept a state with a higher `rev`. */
   rev: number;
   customer: CustomerProfile;
-  checking: CheckingAccount;
+  current: CurrentAccount;
   credit: CreditAccount;
   bills: Bill[];
   nudges: Nudge[];
   timeline: TimelineEvent[];
+  /** Every contact made, on every channel. Drives the frequency guard. */
+  contactLog: ContactRecord[];
   flags: Flags;
-  ui: UiState;
+  /** Requests the customer chose to send. Newest last. */
+  supportCases: SupportCase[];
   demo: DemoState;
+  /**
+   * Changes on every reset. Device-local preferences (Safe Mode, the welcome-
+   * back card) key off it, so "Reset demo" clears them too without the bank
+   * ever reading them.
+   */
+  epoch: number;
   /** Name shown on agent-authored messages. */
   agentName: string;
 }
@@ -219,11 +309,15 @@ export type Action =
   | { type: "ACCEPT_EXTENSION" }
   | { type: "OFFER_SPLIT_PLAN" }
   | { type: "ACCEPT_SPLIT_PLAN" }
-  | { type: "WAIVE_LATE_FEE" }
+  | { type: "REFUND_LATE_FEE" }
+  | { type: "SET_CONTACT_PREFERENCES"; preferences: ContactPreferences }
+  | { type: "REQUEST_SUPPORT"; request: SupportRequest }
+  /** Omitting `id` acts on the newest open case — lets the Demo Director drive it. */
+  | { type: "OPEN_CASE"; id?: string; who: string }
+  | { type: "OFFER_GUIDED_PAYMENT"; id?: string }
+  | { type: "REFER_SPECIALIST"; id?: string; replyBy: string }
+  | { type: "APPROVE_ARRANGEMENT"; id?: string; newDueDate: string; approver: string }
   | { type: "AGENT_NOTE"; text: string }
-  | { type: "SET_FOCUS_MODE"; on: boolean }
-  | { type: "DECLINE_FOCUS" }
-  | { type: "OFFER_FOCUS" }
   | { type: "DEMO_SET_BEAT"; beat: number; active: boolean }
   | { type: "RESET_DEMO" };
 

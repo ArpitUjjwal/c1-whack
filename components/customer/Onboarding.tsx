@@ -203,7 +203,7 @@ export function Onboarding({
             </p>
           )}
 
-          <label className="mt-4 flex min-h-11 items-center gap-3 text-[0.9375rem] font-medium text-fg">
+          <label className="mt-4 flex min-h-[44px] items-center gap-3 text-[0.9375rem] font-medium text-fg">
             <input
               type="checkbox"
               checked={share}

@@ -206,7 +206,8 @@ export type DemoAction =
   | "advocate_send"
   | "setup_pick"
   | "setup_finish"
-  | "setup_open";
+  | "setup_open"
+  | "show_insights";
 
 /**
  * Ephemeral cross-window instructions. Deliberately only demo choreography:

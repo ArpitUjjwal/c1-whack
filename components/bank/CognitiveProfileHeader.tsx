@@ -28,20 +28,20 @@ export function CognitiveProfileHeader({
   const { customer } = state;
   const prefs = customer.contactPreferences;
 
-  // Online or not, and nothing more: which screen Alex is on is not shared.
+  // Online or not, and nothing more: which screen the customer is on is not shared.
   const appStatus = customerOnline
     ? "In the app now"
     : customer.openedAppToday
-      ? "Opened today · now offline"
+      ? "Opened today · offline"
       : "Offline";
 
   return (
-    <Panel bloom="calm" className="p-5" aria-labelledby="profile-heading">
-      <div className="flex flex-wrap items-start justify-between gap-6">
-        <div className="flex items-start gap-4">
+    <Panel bloom="calm" className="px-4 py-3" aria-labelledby="profile-heading">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <div className="flex items-center gap-3">
           <span
             aria-hidden="true"
-            className="glass-2 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-lg font-semibold text-fg"
+            className="glass-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-semibold text-fg"
           >
             {customer.name
               .split(" ")
@@ -49,25 +49,23 @@ export function CognitiveProfileHeader({
               .join("")}
           </span>
           <div>
-            <h1 id="profile-heading" className="text-2xl font-semibold text-fg">
+            <h1 id="profile-heading" className="text-lg leading-tight font-semibold text-fg">
               {customer.name}
             </h1>
-            <p className="text-sm text-fg-3">
-              Customer since {customer.memberSince} · Card ••••{state.credit.accountNumber.slice(-4)} · Current account ••••{state.current.accountNumber.slice(-4)} (linked)
-            </p>
-            <p className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-fg-2">
+            <p className="flex items-center gap-1.5 text-xs text-fg-3">
               <LiveDot online={customerOnline} />
-              {appStatus}
+              {appStatus} · since {customer.memberSince} · card ••••
+              {state.credit.accountNumber.slice(-4)}
             </p>
           </div>
         </div>
 
-        <div className="max-w-xl">
-          <h2 className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
-            How {customer.firstName} prefers to bank
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+          <h2 className="mr-1 text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
+            Prefers
           </h2>
           {customer.cognitiveProfile.length ? (
-            <ul className="mt-2 flex flex-wrap gap-2">
+            <ul className="contents">
               {customer.cognitiveProfile.map((need) => (
                 <li key={need}>
                   <StatusPill tone="calm">{need}</StatusPill>
@@ -75,40 +73,37 @@ export function CognitiveProfileHeader({
               ))}
             </ul>
           ) : (
-            <p className="mt-2 text-sm text-fg-2">
-              Nothing shared. {customer.firstName} chooses what support sees — use plain
-              language, one thing at a time, and no pressure, as for everyone.
-            </p>
+            <span className="text-sm text-fg-2">
+              Nothing shared — plain language, one thing at a time, no pressure.
+            </span>
           )}
         </div>
       </div>
 
-      <div
-        role="note"
-        aria-label={`${customer.firstName}'s contact preferences`}
-        className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-link/25 bg-link-dim px-4 py-3 text-sm"
-      >
-        <span className="font-semibold text-fg">
-          {customer.firstName}&apos;s own rules, set on a calm day ({shortDate(prefs.setOn)}):
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-edge pt-2 text-xs text-fg-2">
+        <span
+          role="note"
+          aria-label={`${customer.firstName}'s contact preferences`}
+          className="flex flex-wrap gap-x-3 gap-y-1"
+        >
+          <span className="font-semibold text-fg">
+            {customer.firstName}&apos;s rules ({shortDate(prefs.setOn)}):
+          </span>
+          <span>{CHANNEL_LABEL[prefs.channel]} only</span>
+          <span>≤ {prefs.maxPerWeek} a week</span>
+          <span>Never {quietHoursLabel(prefs)}</span>
+          <span>
+            {prefs.remindDaysBefore
+              ? `Reminders ${prefs.remindDaysBefore} day${prefs.remindDaysBefore === 1 ? "" : "s"} before`
+              : "No reminders"}
+          </span>
         </span>
-        <span className="text-fg-2">{CHANNEL_LABEL[prefs.channel]} only</span>
-        <span className="text-fg-2">At most {prefs.maxPerWeek} a week</span>
-        <span className="text-fg-2">Never {quietHoursLabel(prefs)}</span>
-        <span className="text-fg-2">
-          {prefs.remindDaysBefore
-            ? `Reminders ${prefs.remindDaysBefore} day${prefs.remindDaysBefore === 1 ? "" : "s"} before`
-            : "No reminders"}
-        </span>
+        {customer.supportNote ? (
+          <span className="min-w-0 italic">
+            · Note, shared by choice: &ldquo;{customer.supportNote}&rdquo;
+          </span>
+        ) : null}
       </div>
-
-      {customer.supportNote ? (
-        <blockquote className="mt-3 rounded-xl border-l-2 border-calm bg-calm-dim p-4 text-[0.9375rem] text-fg-2">
-          <p className="italic">&ldquo;{customer.supportNote}&rdquo;</p>
-          <footer className="mt-1.5 text-xs font-medium text-calm not-italic">
-            — {customer.firstName}&apos;s own words, shared by choice. No reason given, none needed.
-          </footer>
-        </blockquote>
-      ) : null}
     </Panel>
   );
 }

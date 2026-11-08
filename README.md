@@ -87,6 +87,15 @@ will see** beside a **"not shared"** list, and sends only when Alex presses Send
 
 ## Capital One side — the Care Centre
 
+**Next action** (`lib/next-action.ts`) — a strip at the top of a compact,
+two-column console: the facts that matter at a glance (past due, credit-file
+date countdown, messages this week against the customer's limit, quiet hours,
+grace) and the one thing to do next, with a button that does it — offer guided
+payment, approve an arrangement that passed its checks, refund the fee after
+payment, or write one calm message (prefilled in the composer). It says
+*wait* when something is already with the customer, and *hold* when contacting
+now would break one of their rules.
+
 **Support handoff inbox** — request #1042 appears the moment Alex sends it,
 with the AI summary, the facts, Alex's contact preference, a **"deliberately
 not shared"** box, and an access log of who opened it.
@@ -127,11 +136,6 @@ original words.
 typed. Threats go; a real consequence stays, once, calmly, with its date
 (**100 → 0** on a standard collections sentence). Compliance wording can be
 locked, and a frequency guard checks each send against Alex's own contact rules.
-
-**Thirty days, three policies** (`lib/engines/simulation.ts`) — the standard
-cadence never resolves and is reported; **the design alone** resolves on day 4
-with nothing given away; optional concessions (after approval) make it a day
-faster.
 
 ## Privacy by design
 
@@ -186,6 +190,20 @@ cannot take down a newer one.
 
 Both surfaces dispatch into one pure reducer, so the customer's payment preview
 is computed by the same code that performs it.
+
+## Testing
+
+```bash
+npm test
+```
+
+71 unit tests (Vitest, `tests/`) cover the pure logic behind every feature:
+the Pressure Index and rewrites (including tone, shouting and insults), the
+tone check, the grace rule (6 of 6), contact rules and quiet hours, the
+Financial Time Machine, the Advocate's drafts, arrangement eligibility,
+Insights suppression, the reducer, the first-run choices (tick, untick, hand
+changes kept), the three customers' starting data, and the next-action bar.
+The clock is fixed in tests so date-based results are repeatable.
 
 ## AI (optional)
 

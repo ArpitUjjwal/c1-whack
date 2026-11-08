@@ -110,6 +110,20 @@ html {
   }
 }
 
+/*
+  Desktop density. At 100% browser zoom the app read as too large on a
+  laptop — the comfortable view was 80% zoom — so on screens 1024px and wider
+  the root scales to 80%. Type and spacing are rem-based and follow; tap
+  targets are pinned in px (min-h-[44px] and friends) so they stay at the
+  44px AAA size the accessibility audit checks. Phones and tablets keep the
+  browser default.
+*/
+@media (min-width: 1024px) {
+  html {
+    font-size: 80%;
+  }
+}
+
 body {
   background: var(--color-void);
   color: var(--color-fg);
@@ -343,6 +357,19 @@ body {
 }
 [data-size="xlarge"] :is(#customer-main, header, nav, [role="dialog"]) {
   zoom: 1.32;
+}
+/*
+  On a real phone the screen is already narrow: the full scale would leave
+  ~280px of usable width and read as "zoomed in". Still clearly larger, but
+  less, so lines don't break every two words.
+*/
+@media (max-width: 639px) {
+  [data-size="large"] :is(#customer-main, header, nav, [role="dialog"]) {
+    zoom: 1.08;
+  }
+  [data-size="xlarge"] :is(#customer-main, header, nav, [role="dialog"]) {
+    zoom: 1.18;
+  }
 }
 
 /* Wider spacing and no italics: both commonly reported to help dyslexic readers. */

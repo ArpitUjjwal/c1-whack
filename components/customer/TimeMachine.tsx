@@ -74,7 +74,7 @@ export function TimeMachine({
         value={result.days}
         onChange={(e) => onDaysChange(Number(e.target.value))}
         aria-valuetext={`${result.days} day${result.days === 1 ? "" : "s"}`}
-        className="mt-2 h-11 w-full cursor-pointer accent-[var(--color-calm)]"
+        className="mt-2 h-[44px] w-full cursor-pointer accent-[var(--color-calm)]"
       />
       <div className="flex justify-between text-xs text-fg-3" aria-hidden="true">
         <span>{BREAK_MIN_DAYS} day</span>

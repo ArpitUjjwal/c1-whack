@@ -70,7 +70,7 @@ export function TopBar({
 
           <Link
             href="/customer"
-            className="inline-flex min-h-11 items-center rounded-lg px-2 font-medium text-link underline underline-offset-4 hover:text-fg"
+            className="inline-flex min-h-[44px] items-center rounded-lg px-2 font-medium text-link underline underline-offset-4 hover:text-fg"
           >
             Customer view
           </Link>
@@ -87,7 +87,7 @@ export function TopBar({
             <select
               value={profileId}
               onChange={(e) => onSwitchProfile(e.target.value as ProfileId)}
-              className="min-h-11 min-w-0 max-w-full rounded-lg border border-edge bg-glass-3 px-2 text-sm font-semibold text-fg"
+              className="min-h-[44px] min-w-0 max-w-full rounded-lg border border-edge bg-glass-3 px-2 text-sm font-semibold text-fg"
               title={profileConfig(profileId).summary}
             >
               {PROFILE_IDS.map((id) => (

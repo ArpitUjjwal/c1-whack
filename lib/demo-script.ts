@@ -128,13 +128,8 @@ export const BEATS: Beat[] = [
     caption:
       "Across everyone: Accessibility Insights — what customers struggle with most, in their own words, and what actually works.",
     look: "bank",
+    signal: { to: "bank", action: "show_insights" },
     note: "Point at the recommendations: two are tips that go straight back into the app. Built from requests, never from phones; no group under ten.",
-  },
-  {
-    caption:
-      "Thirty days, three policies. Standard: never resolved, reported. the design alone: resolved on day four, nothing given away.",
-    look: "bank",
-    note: "Run the simulation.",
   },
   {
     caption:

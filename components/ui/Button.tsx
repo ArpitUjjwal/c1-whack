@@ -41,9 +41,9 @@ const variants: Record<Variant, string> = {
 
 /** 44px minimum height at every size — comfortable, reachable targets. */
 const sizes: Record<Size, string> = {
-  sm: "min-h-11 px-3.5 text-sm",
-  md: "min-h-12 px-5 text-[0.9375rem]",
-  lg: "min-h-14 px-6 text-base",
+  sm: "min-h-[44px] px-3.5 text-sm",
+  md: "min-h-[48px] px-5 text-[0.9375rem]",
+  lg: "min-h-[56px] px-6 text-base",
 };
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

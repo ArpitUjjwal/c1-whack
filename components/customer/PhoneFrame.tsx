@@ -59,7 +59,7 @@ export function PhoneFrame({
       />
 
       {/* The titanium bezel, drawn only once there is room for it. */}
-      <div className="relative z-10 w-full sm:w-auto sm:rounded-[3.75rem] sm:bg-[#2b2d33] sm:p-[11px] sm:shadow-[0_50px_140px_-30px_rgba(0,0,0,0.7)]">
+      <div className="relative z-10 w-full sm:w-auto sm:rounded-[3.75rem] sm:bg-[#2b2d33] sm:p-[0.6875rem] sm:shadow-[0_50px_140px_-30px_rgba(0,0,0,0.7)]">
         <div
           ref={setFrame}
           data-font={reading?.font}
@@ -67,7 +67,7 @@ export function PhoneFrame({
           data-spacing={reading?.wideSpacing ? "wide" : undefined}
           data-tint={reading?.tint}
           data-contrast={reading?.highContrast ? "high" : undefined}
-          className="relative flex h-dvh w-full flex-col overflow-hidden bg-void sm:h-[852px] sm:max-h-[86vh] sm:w-[393px] sm:rounded-[3.1875rem]"
+          className="relative flex h-dvh w-full flex-col overflow-hidden bg-void sm:h-[53.25rem] sm:max-h-[86vh] sm:w-[24.5625rem] sm:rounded-[3.1875rem]"
         >
           {/* --------------------------------------------- device chrome -- */}
           {/* Decorative throughout, and excluded from every measurement. */}
@@ -75,12 +75,12 @@ export function PhoneFrame({
             aria-hidden="true"
             data-load-ignore
             data-a11y-ignore
-            className="relative z-30 flex h-[54px] shrink-0 items-center justify-between px-9 pt-3 text-fg"
+            className="relative z-30 flex h-[3.375rem] shrink-0 items-center justify-between px-9 pt-3 text-fg"
           >
             <span className="text-[0.9375rem] font-semibold tracking-tight">9:41</span>
 
             {/* The Dynamic Island, floating over the status row. */}
-            <span className="absolute top-[11px] left-1/2 hidden h-[36px] w-[125px] -translate-x-1/2 rounded-full bg-black sm:block" />
+            <span className="absolute top-[0.6875rem] left-1/2 hidden h-[2.25rem] w-[7.8125rem] -translate-x-1/2 rounded-full bg-black sm:block" />
 
             <span className="flex items-center gap-[5px]">
               <SignalBars />
@@ -100,9 +100,9 @@ export function PhoneFrame({
             aria-hidden="true"
             data-load-ignore
             data-a11y-ignore
-            className="hidden h-[22px] shrink-0 items-center justify-center sm:flex"
+            className="hidden h-[1.375rem] shrink-0 items-center justify-center sm:flex"
           >
-            <span className="h-[5px] w-[140px] rounded-full bg-fg/30" />
+            <span className="h-[0.3125rem] w-[8.75rem] rounded-full bg-fg/30" />
           </div>
         </div>
       </div>

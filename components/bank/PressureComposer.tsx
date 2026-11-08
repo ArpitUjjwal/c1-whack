@@ -61,14 +61,20 @@ export function PressureComposer({
   state,
   onSend,
   now,
+  initialDraft = "",
+  focusOnMount = false,
 }: {
   state: AppState;
   onSend: (title: string, body: string, tone: Tone) => void;
   /** Slow-ticking clock from the store; nothing here reads the time in render. */
   now: number;
+  /** A line chosen elsewhere ("Use" in the script, or the next-action bar). */
+  initialDraft?: string;
+  /** Bring the composer into view and focus the message when it mounts. */
+  focusOnMount?: boolean;
 }) {
   const [title, setTitle] = useState("");
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(initialDraft);
   const [pickedTone, setTone] = useState<Tone>("calm");
   const [deep, setDeep] = useState<{ text: string; report: PressureReport } | null>(
     null,
@@ -134,6 +140,16 @@ export function PressureComposer({
   const [rewriteSource, setRewriteSource] = useState<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Seeded from elsewhere: bring the message into view and put the cursor in it.
+  useEffect(() => {
+    if (!focusOnMount) return;
+    const el = textareaRef.current;
+    el?.scrollIntoView({ block: "center", behavior: "smooth" });
+    el?.focus({ preventScroll: true });
+    // Mount only: the composer is re-keyed for each new seed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const mirrorRef = useRef<HTMLDivElement>(null);
   const { onSignal } = useRealtimeSync();
 
@@ -326,7 +342,7 @@ export function PressureComposer({
   return (
     <Panel
       bloom={report.band === "harmful" || report.band === "pressuring" ? "red" : "link"}
-      className="p-5"
+      className="p-4"
       aria-labelledby="composer-heading"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -337,12 +353,12 @@ export function PressureComposer({
           {claudeAvailable ? "Local + Claude" : "Local engine"}
         </StatusPill>
       </div>
-      <p className="mt-1 text-sm text-fg-3">
+      <p className="text-xs text-fg-3">
         Scored as you type. Nothing reaches {state.customer.firstName} without passing through here.
       </p>
 
       {/* ------------------------------------------------------ the meter -- */}
-      <div className="mt-4">
+      <div className="mt-3">
         <div className="flex items-baseline justify-between gap-3">
           <span className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
             Pressure Index
@@ -381,7 +397,7 @@ export function PressureComposer({
       </div>
 
       {/* ------------------------------------------------------- the draft -- */}
-      <label htmlFor="nudge-title" className="mt-5 block text-xs font-semibold tracking-[0.1em] text-fg-3 uppercase">
+      <label htmlFor="nudge-title" className="mt-3 block text-xs font-semibold tracking-[0.1em] text-fg-3 uppercase">
         Headline
       </label>
       <input
@@ -390,7 +406,7 @@ export function PressureComposer({
         onChange={(e) => setTitle(e.target.value)}
         maxLength={60}
         placeholder="Just checking in"
-        className="mt-1.5 w-full rounded-xl border border-edge bg-glass px-3 py-2.5 text-[0.9375rem] text-fg placeholder:text-fg-3 focus:border-link focus:bg-glass-2"
+        className="mt-1.5 min-h-[44px] w-full rounded-xl border border-edge bg-glass px-3 py-2.5 text-[0.9375rem] text-fg placeholder:text-fg-3 focus:border-link focus:bg-glass-2"
       />
 
       <label htmlFor="nudge-body" className="mt-3 block text-xs font-semibold tracking-[0.1em] text-fg-3 uppercase">
@@ -450,7 +466,7 @@ export function PressureComposer({
                 <button
                   type="button"
                   onClick={() => setLockedIds((ids) => ids.filter((x) => x !== id))}
-                  className="min-h-11 shrink-0 px-2 text-sm font-semibold text-fg-3 hover:text-fg"
+                  className="min-h-[44px] shrink-0 px-2 text-sm font-semibold text-fg-3 hover:text-fg"
                   aria-label={`Remove ${seg.label}`}
                 >
                   Remove
@@ -467,7 +483,7 @@ export function PressureComposer({
             key={seg.id}
             type="button"
             onClick={() => setLockedIds((ids) => [...ids, seg.id])}
-            className="min-h-11 rounded-xl border border-edge bg-glass px-3 text-sm font-medium text-fg-2 hover:text-fg"
+            className="min-h-[44px] rounded-xl border border-edge bg-glass px-3 text-sm font-medium text-fg-2 hover:text-fg"
           >
             + {seg.label}
           </button>
@@ -484,7 +500,7 @@ export function PressureComposer({
             exit={{ opacity: 0, height: 0 }}
             className="mt-3 space-y-1.5 overflow-hidden text-sm"
           >
-            {report.findings.slice(0, 4).map((f) => (
+            {report.findings.slice(0, 3).map((f) => (
               <li key={f.kind} className="flex items-start justify-between gap-3">
                 <span className="min-w-0">
                   <span className="text-fg">{f.label}</span>
@@ -517,7 +533,7 @@ export function PressureComposer({
       </AnimatePresence>
 
       {/* ----------------------------------------------------------- tone -- */}
-      <fieldset className="mt-4">
+      <fieldset className="mt-3">
         <legend className="text-xs font-semibold tracking-[0.1em] text-fg-3 uppercase">
           Tone
         </legend>
@@ -531,9 +547,9 @@ export function PressureComposer({
           ).map((option) => (
             <label
               key={option.id}
-              className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors ${
+              className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors ${
                 option.id === "celebrate" && !goodNews
-                  ? "cursor-not-allowed border-edge text-fg-3 opacity-60"
+                  ? "cursor-not-allowed border-dashed border-edge-2 text-fg-3"
                   : tone === option.id
                     ? "cursor-pointer border-link bg-link-dim text-fg"
                     : "cursor-pointer border-edge bg-glass text-fg-3 hover:text-fg-2"
@@ -581,7 +597,7 @@ export function PressureComposer({
       ) : null}
 
       {/* ------------------------------------------------ frequency guard -- */}
-      <div className="mt-4 rounded-xl border border-edge bg-glass p-3">
+      <div className="mt-3 rounded-xl border border-edge bg-glass px-3 py-2">
         <div className="flex flex-wrap items-center gap-2">
           <StatusPill tone={contact.overLimit ? "attn" : "link"}>
             {ordinal(contact.nextOrdinal)} message this week
@@ -597,13 +613,18 @@ export function PressureComposer({
             ))}
           </ul>
         ) : null}
-        <p className="mt-2 text-xs text-fg-3">
-          Why it&apos;s counted: {FREQUENCY_EVIDENCE.text} ({FREQUENCY_EVIDENCE.source})
-        </p>
+        <details className="mt-1 text-xs text-fg-3">
+          <summary className="min-h-[44px] cursor-pointer content-center font-medium text-fg-2">
+            Why it&apos;s counted
+          </summary>
+          <p className="pb-1">
+            {FREQUENCY_EVIDENCE.text} ({FREQUENCY_EVIDENCE.source})
+          </p>
+        </details>
       </div>
 
       {/* --------------------------------------------------------- actions -- */}
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-2">
         <Button
           variant={report.score >= 20 ? "primary" : "outline"}
           size="md"

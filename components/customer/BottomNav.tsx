@@ -47,7 +47,7 @@ export function BottomNav({
                 data-nav
                 onClick={() => onChange(tab.id)}
                 aria-current={isActive ? "page" : undefined}
-                className={`flex min-h-12 w-full flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 transition-colors ${
+                className={`flex min-h-[48px] w-full flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 transition-colors ${
                   isActive ? "bg-deep text-fg" : "text-fg-3 hover:text-fg-2"
                 }`}
               >

@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 import { Panel } from "@/components/ui/Panel";
 import { clockTime, relativeTime } from "@/lib/format";
 import type { AppState, TimelineEvent } from "@/lib/types";
@@ -29,10 +30,14 @@ export function ActivityTimeline({
   now: number;
   hydrated: boolean;
 }) {
-  const events = [...state.timeline].reverse();
+  const [showAll, setShowAll] = useState(false);
+  const all = [...state.timeline].reverse();
+  /** The latest few are what an agent acts on; the rest is one tap away. */
+  const LATEST = 5;
+  const events = showAll ? all : all.slice(0, LATEST);
 
   return (
-    <Panel className="flex min-h-0 flex-col p-5" aria-labelledby="timeline-heading">
+    <Panel className="flex min-h-0 flex-col p-4" aria-labelledby="timeline-heading">
       <div className="flex items-center justify-between gap-3">
         <h2 id="timeline-heading" className="font-semibold text-fg">
           Account activity
@@ -42,26 +47,18 @@ export function ActivityTimeline({
 
       {/* Only when there has actually been a long gap. */}
       {state.customer.daysSinceLastOpen >= 7 ? (
-      <div className="mt-3 rounded-xl border border-attn/25 bg-attn-dim p-3.5">
-        <p className="text-xs font-semibold tracking-[0.12em] text-attn uppercase">
-          Long quiet spell
+        <p className="mt-2 rounded-lg border border-attn/25 bg-attn-dim px-2.5 py-1.5 text-xs text-fg-2">
+          <span className="font-semibold text-attn">Long quiet spell · </span>
+          {state.customer.daysSinceLastOpen} days without the app
+          {state.customer.openedAppToday ? ", back today" : ""}. Emails unopened — the
+          channel failed, not the customer.
         </p>
-        <p className="mt-1.5 text-[0.9375rem] font-medium text-fg">
-          No app activity for {state.customer.daysSinceLastOpen} days
-          {state.customer.openedAppToday ? " — logged in today." : "."}
-        </p>
-        <p className="mt-1 text-sm text-fg-2">
-          Reminder emails sent, none opened. The channel failed, not the
-          customer. Route to proactive support rather than the standard arrears
-          cadence.
-        </p>
-      </div>
       ) : null}
 
       <ol
         aria-live="polite"
         aria-relevant="additions"
-        className="mt-4 max-h-[26rem] min-h-0 flex-1 space-y-0 overflow-y-auto pr-1"
+        className="mt-3 min-h-0 flex-1 space-y-0 pr-1"
       >
         <AnimatePresence initial={false}>
           {events.map((event) => (
@@ -71,17 +68,15 @@ export function ActivityTimeline({
               initial={{ opacity: 0, x: -6 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.25 }}
-              className="relative flex gap-3 pb-4"
+              className="relative flex gap-3 pb-2.5"
             >
               <Spine event={event} />
               <div className="min-w-0 pt-0.5">
-                <p className="text-[0.9375rem] leading-snug font-medium text-fg">
-                  {event.title}
-                </p>
+                <p className="text-sm leading-snug font-medium text-fg">{event.title}</p>
                 {event.detail ? (
-                  <p className="mt-0.5 text-sm text-fg-2">{event.detail}</p>
+                  <p className="mt-0.5 line-clamp-2 text-xs text-fg-2">{event.detail}</p>
                 ) : null}
-                <p className="mt-1 text-xs text-fg-3">
+                <p className="mt-0.5 text-xs text-fg-3">
                   {event.actor === "customer"
                     ? state.customer.firstName
                     : actorStyles[event.actor].label}
@@ -94,6 +89,16 @@ export function ActivityTimeline({
           ))}
         </AnimatePresence>
       </ol>
+      {all.length > LATEST ? (
+        <button
+          type="button"
+          onClick={() => setShowAll((v) => !v)}
+          aria-expanded={showAll}
+          className="mt-1 min-h-[44px] self-start text-sm font-semibold text-link hover:text-fg"
+        >
+          {showAll ? "Show latest only" : `Show all ${all.length}`}
+        </button>
+      ) : null}
     </Panel>
   );
 }

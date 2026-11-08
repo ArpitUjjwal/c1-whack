@@ -40,7 +40,7 @@ export function SafeToSpendCard({
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="display tnum mt-2 text-[3.25rem] text-fg"
+        className="display tnum mt-2 text-[2.5rem] text-fg sm:text-[3.25rem]"
       >
         {money(safe.available)}
       </motion.p>

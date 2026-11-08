@@ -158,6 +158,10 @@ export function JudgeOverlay({
                         body="Scores every outgoing message as it is typed. Transparent lexicon plus structural rules; each finding names its span and its points. A tone check (insult list plus the AFINN sentiment model) compares the words with the tone picked, and blocks insults outright."
                       />
                       <Mechanism
+                        name="Next action"
+                        body="One strip at the top: the facts that matter (past due, credit-file date, messages this week, quiet hours) and the single next step, with a button that does it. Says 'wait' or 'hold' when contacting now would chase or break the customer's rules."
+                      />
+                      <Mechanism
                         name="Support handoff"
                         body="Requests arrive only when a customer sends one, with a 'deliberately not shared' list beside them and an access log."
                       />
@@ -166,8 +170,8 @@ export function JudgeOverlay({
                         body="Three pathways for one request, from the customer's side. No pathway assumes an extension or fee waiver; arrangements need eligibility and a second approver."
                       />
                       <Mechanism
-                        name="Accessibility Insights and policy simulation"
-                        body="Top barriers in customers' own words, hardest journeys, what works, and recommendations — from requests customers chose to send, never from their phones, and no group under ten. Plus thirty days under three outreach policies."
+                        name="Accessibility Insights"
+                        body="Top barriers in customers' own words, hardest journeys, what works, and recommendations — from requests customers chose to send, never from their phones, and no group under ten. Collapsed to a one-line summary until opened."
                       />
                     </>
                   )}

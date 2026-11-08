@@ -74,7 +74,7 @@ export function WhatThisMeans({
       <button
         type="button"
         onClick={ask}
-        className="inline-flex min-h-11 items-center gap-1.5 text-[0.8125rem] font-semibold text-link hover:text-fg"
+        className="inline-flex min-h-[44px] items-center gap-1.5 text-[0.8125rem] font-semibold text-link hover:text-fg"
       >
         <Icon name="info" size={16} />
         {label}

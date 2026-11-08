@@ -42,7 +42,7 @@ export function Disclosure({
           setOpen(next);
           onToggle?.(next);
         }}
-        className="inline-flex min-h-11 items-center gap-2 rounded-lg text-sm font-semibold text-link transition-colors hover:text-fg"
+        className="inline-flex min-h-[44px] items-center gap-2 rounded-lg text-sm font-semibold text-link transition-colors hover:text-fg"
       >
         <motion.span
           aria-hidden="true"

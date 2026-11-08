@@ -6,8 +6,8 @@ import { AgentScriptPanel } from "./AgentScriptPanel";
 import { CognitiveProfileHeader } from "./CognitiveProfileHeader";
 import { InsightsReport } from "./InsightsReport";
 import { LiveAccountPanel } from "./LiveAccountPanel";
+import { NextActionBar } from "./NextActionBar";
 import { PressureComposer } from "./PressureComposer";
-import { SimulationTrack } from "./SimulationTrack";
 import { SupportInbox } from "./SupportInbox";
 import { TopBar } from "./TopBar";
 import { DemoDirector } from "@/components/system/DemoDirector";
@@ -44,7 +44,16 @@ export function BankConsole() {
 
   const customerPeers = peers.filter((peer) => peer.role === "customer").length;
 
-  const [seedLine, setSeedLine] = useState<string | null>(null);
+  /*
+    A line chosen elsewhere — "Use" in the script, or the next-action bar —
+    re-keys the composer with that line as its draft and focuses it. The
+    counter makes choosing the same line twice still work.
+  */
+  const [seed, setSeed] = useState<{ line: string; n: number } | null>(null);
+  const compose = useCallback(
+    (line: string) => setSeed((prev) => ({ line, n: (prev?.n ?? 0) + 1 })),
+    [],
+  );
 
   const sendNudge = useCallback(
     (title: string, body: string, tone: Tone) => {
@@ -86,38 +95,53 @@ export function BankConsole() {
       {/* The bottom padding clears the fixed demo hint bar, which sits at the
           foot of the viewport and otherwise covers the last line of the
           footer. */}
+      {/* The bottom padding clears the fixed demo hint bar. */}
       <main
         id="bank-main"
-        className="relative mx-auto max-w-[1800px] space-y-4 px-4 pt-5 pb-16 lg:px-6"
+        className="relative mx-auto max-w-[1800px] space-y-3 px-4 pt-4 pb-16 lg:px-6"
       >
         <CognitiveProfileHeader state={state} customerOnline={customerOnline} />
 
-        {/* Desktop-first: the request and the reply side by side, stacking below. */}
-        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1.9fr)_minmax(0,1.1fr)]">
-          <SupportInbox state={state} dispatch={dispatch} />
+        <NextActionBar
+          state={state}
+          now={now}
+          customerOnline={customerOnline}
+          dispatch={dispatch}
+          onCompose={compose}
+        />
 
-          <div className="space-y-4">
-            <PressureComposer key={seedLine ?? "composer"} state={state} onSend={sendNudge} now={now} />
-            <AgentScriptPanel script={script} source={scriptSource} onUseLine={setSeedLine} />
+        {/*
+          Desktop: the request and the account on the left, the reply on the
+          right. Stacks below xl.
+        */}
+        <div className="grid grid-cols-1 items-start gap-3 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <div className="space-y-3">
+            <SupportInbox state={state} dispatch={dispatch} />
+            <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
+              <LiveAccountPanel state={state} safe={safe} />
+              <ActivityTimeline state={state} now={now} hydrated={hydrated} />
+            </div>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
-          <LiveAccountPanel state={state} safe={safe} />
-          <ActivityTimeline state={state} now={now} hydrated={hydrated} />
+          <div className="space-y-3">
+            <PressureComposer
+              key={`composer-${seed?.n ?? 0}`}
+              state={state}
+              onSend={sendNudge}
+              now={now}
+              initialDraft={seed?.line}
+              focusOnMount={seed !== null}
+            />
+            <AgentScriptPanel script={script} source={scriptSource} onUseLine={compose} />
+          </div>
         </div>
 
         <InsightsReport liveCases={state.supportCases} />
 
-        <SimulationTrack />
-
         <p className="px-1 pb-4 text-xs text-fg-3">
-          Prototype of Capital One Adaptive Support. Account facts and the
-          requests a customer chooses to send are synchronised across windows over{" "}
-          <code className="glass rounded px-1 py-0.5 text-fg-2">BroadcastChannel</code>{" "}
-          with a{" "}
-          <code className="glass rounded px-1 py-0.5 text-fg-2">localStorage</code>{" "}
-          fallback. Nothing measured on the customer&apos;s device crosses over.
+          Prototype of Capital One Adaptive Support. Account facts and the requests
+          a customer chooses to send sync across windows; nothing measured on the
+          customer&apos;s device crosses over.
         </p>
       </main>
 

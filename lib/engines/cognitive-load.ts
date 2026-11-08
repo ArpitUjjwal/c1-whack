@@ -43,7 +43,7 @@ export const FOCUS_TARGET = 25;
 
 /**
  * The home screen's measured load before and after Safe Mode, as quoted in
- * the README, ACCESSIBILITY.md, the simulation and the demo. One pair, in one
+ * the README, ACCESSIBILITY.md, the Insights report and the demo. One pair, in one
  * place, so the pitch cannot disagree with itself. Re-measure with the `?`
  * overlay whenever the home screen changes.
  */

@@ -18,7 +18,7 @@ export function Tip({ text, onDismiss }: { text: string; onDismiss: () => void }
       <button
         type="button"
         onClick={onDismiss}
-        className="min-h-11 shrink-0 px-2 text-sm font-semibold text-fg-3 hover:text-fg"
+        className="min-h-[44px] shrink-0 px-2 text-sm font-semibold text-fg-3 hover:text-fg"
       >
         Got it
       </button>

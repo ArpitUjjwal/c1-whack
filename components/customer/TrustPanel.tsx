@@ -73,7 +73,7 @@ export function TrustPanel({
             aria-checked={on}
             aria-labelledby="adaptive-label"
             onClick={() => onToggleAdaptive(!on)}
-            className={`relative inline-flex h-11 w-[4.25rem] shrink-0 items-center rounded-full border transition-colors ${
+            className={`relative inline-flex h-[44px] w-[4.25rem] shrink-0 items-center rounded-full border transition-colors ${
               on ? "border-calm bg-calm-dim" : "border-edge bg-glass"
             }`}
           >
@@ -153,7 +153,7 @@ function ContactPreferencesEditor({
               {(Object.keys(CHANNEL_LABEL) as ContactChannel[]).map((c) => (
                 <label
                   key={c}
-                  className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm ${
+                  className={`flex min-h-[44px] cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm ${
                     draft.channel === c ? "border-calm bg-calm-dim text-fg" : "border-edge text-fg-2"
                   }`}
                 >
@@ -255,7 +255,7 @@ function Select({
         id={id}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="mt-1.5 min-h-11 w-full rounded-xl border border-edge bg-glass px-3 text-[0.9375rem] text-fg"
+        className="mt-1.5 min-h-[44px] w-full rounded-xl border border-edge bg-glass px-3 text-[0.9375rem] text-fg"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

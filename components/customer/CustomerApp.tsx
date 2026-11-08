@@ -444,7 +444,7 @@ export function CustomerApp() {
                     <p>Prototype of Capital One Adaptive Support.</p>
                     <Link
                       href="/bank"
-                      className="inline-flex min-h-11 items-center font-medium text-link underline"
+                      className="inline-flex min-h-[44px] items-center font-medium text-link underline"
                     >
                       Open the Care Centre in a second window
                     </Link>

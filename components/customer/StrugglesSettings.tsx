@@ -90,7 +90,7 @@ export function StrugglesSettings({
             aria-labelledby="share-label"
             disabled={!labels.length && !sharing}
             onClick={() => setSharing(!sharing)}
-            className={`relative inline-flex h-11 w-[4.25rem] shrink-0 items-center rounded-full border transition-colors disabled:opacity-50 ${
+            className={`relative inline-flex h-[44px] w-[4.25rem] shrink-0 items-center rounded-full border transition-colors disabled:opacity-50 ${
               sharing ? "border-calm bg-calm-dim" : "border-edge bg-glass"
             }`}
           >

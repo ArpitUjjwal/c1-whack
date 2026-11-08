@@ -32,7 +32,7 @@ export function RescueSimulator({
   const current = pathways.find((p) => p.id === active) ?? pathways[0];
 
   return (
-    <section aria-labelledby={`${baseId}-h`} className="rounded-xl border border-edge p-4">
+    <section aria-labelledby={`${baseId}-h`} className="rounded-xl border border-edge p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 id={`${baseId}-h`} className="font-semibold text-fg">
           Explore a support pathway
@@ -50,7 +50,7 @@ export function RescueSimulator({
             aria-selected={active === p.id}
             aria-controls={`${baseId}-panel`}
             onClick={() => setActive(p.id)}
-            className={`min-h-11 rounded-xl border px-3 py-2 text-left text-sm font-semibold transition-colors ${
+            className={`min-h-[44px] rounded-xl border px-3 py-2 text-left text-sm font-semibold transition-colors ${
               active === p.id
                 ? "border-link bg-link-dim text-fg"
                 : "border-edge bg-glass text-fg-3 hover:text-fg-2"
@@ -68,11 +68,11 @@ export function RescueSimulator({
         id={`${baseId}-panel`}
         role="tabpanel"
         aria-labelledby={`${baseId}-tab-${current.id}`}
-        className="mt-4"
+        className="mt-3"
       >
         <PathwayDetail pathway={current} />
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="mt-3 flex flex-wrap items-center gap-3">
           {current.action === "none" ? (
             <p className="text-sm text-fg-3">{current.actionLabel}.</p>
           ) : (
@@ -91,7 +91,7 @@ export function RescueSimulator({
         </div>
       </div>
 
-      <p className="mt-4 text-xs text-fg-3">
+      <p className="mt-3 text-xs text-fg-3">
         Illustrative operational simulation, not a real Capital One policy
         engine or a prediction of customer outcomes.
       </p>

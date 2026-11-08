@@ -21,7 +21,7 @@ export function StruggleChecklist({
         return (
           <li key={s.id}>
             <label
-              className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-link ${
+              className={`flex min-h-[44px] cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-link ${
                 on ? "border-calm bg-calm-dim" : "border-edge bg-glass"
               }`}
             >

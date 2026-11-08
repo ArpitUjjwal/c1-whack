@@ -211,7 +211,7 @@ you like" — and the measured load drops below the 25 target.
 
 **Measured:** home-screen load 29 → **19**. (One pair, defined once as
 `FOCUS_LOAD_BEFORE` / `FOCUS_LOAD_AFTER` in `lib/engines/cognitive-load.ts`,
-and quoted by the simulation, the Insights report and the demo.) Safe Mode is
+and quoted by the Insights report and the demo.) Safe Mode is
 stored in device-local preferences (`lib/device.ts`), never in shared state.
 
 ### Welcome-back
@@ -373,6 +373,14 @@ Index and tone check score every draft as it is typed.
 
 ### The Care Centre: support that starts before a payment fails
 
+The console is built to be acted on, not scrolled. A **next-action** strip
+(`lib/next-action.ts`) sits at the top: status at a glance, then the single
+next step with a button that does it. It never acts on its own, uses the same
+guards as the panels below, and says *wait* or *hold* rather than recommend
+chasing or breaking the customer's contact rules. Secondary detail — the full
+access log, older activity, extra script lines, the Insights sections — is one
+tap away instead of on screen.
+
 Requests arrive only when a customer sends one. Each shows what Alex shared
 — summary, facts, help requested, contact preference — beside a
 **"deliberately not shared"** box, with an access log of who opened it.
@@ -401,11 +409,6 @@ classifications, and no group under ten is shown. Illustrative data.
 The **grace rule** waives a late fee automatically when the last six
 payments were all on time (6 of 6), once a year. It needs no request and no explanation,
 and it rewards a record of paying rather than a period of silence.
-
-The 30-day simulation runs three lanes: the standard cadence, **the design
-alone** (one in-app message, welcome-back and Safe Mode, the Time Machine, a
-guided payment — nothing given away, the fee stands), and the design plus
-optional concessions after approval. The design-only lane resolves on day 4.
 
 ---
 
@@ -495,7 +498,6 @@ credible:
 - The Pressure Index lexicon is **English-only** and will miss harm expressed
   without flagged vocabulary. The optional Claude pass exists precisely to cover
   that gap, and the local engine runs regardless.
-- The 30-day simulation uses **assumed** engagement constants, printed under it.
 - Compliance wording (`lib/compliance.ts`) is **illustrative**. The reporting
   rule follows Capital One UK's published guidance; a real deployment would
   take every locked segment verbatim from Capital One's compliance team.

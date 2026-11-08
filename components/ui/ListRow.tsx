@@ -40,7 +40,7 @@ export function ListRow({
   return (
     <Tag
       {...(onClick ? { type: "button" as const, onClick } : {})}
-      className={`flex min-h-14 w-full items-center gap-3.5 px-4 py-3 text-left ${
+      className={`flex min-h-[56px] w-full items-center gap-3.5 px-4 py-3 text-left ${
         onClick ? "hover:bg-deep active:bg-deep" : ""
       }`}
     >

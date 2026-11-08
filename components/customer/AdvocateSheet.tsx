@@ -188,7 +188,7 @@ export function AdvocateSheet({
 
       {step === "details" ? (
         <div className="space-y-4">
-          <label className="flex min-h-11 items-center gap-3 text-[0.9375rem] text-fg">
+          <label className="flex min-h-[44px] items-center gap-3 text-[0.9375rem] text-fg">
             <input
               type="checkbox"
               checked={offerPart}
@@ -218,7 +218,7 @@ export function AdvocateSheet({
                       canPay: { amount: Math.max(1, Number(e.target.value) || 1), date: i.canPay?.date ?? payDates[2] },
                     }))
                   }
-                  className="tnum mt-1 min-h-11 w-full rounded-xl border border-edge bg-glass px-3 text-fg"
+                  className="tnum mt-1 min-h-[44px] w-full rounded-xl border border-edge bg-glass px-3 text-fg"
                 />
               </label>
               <label className="text-sm text-fg-2">
@@ -231,7 +231,7 @@ export function AdvocateSheet({
                       canPay: { amount: i.canPay?.amount ?? 20, date: e.target.value },
                     }))
                   }
-                  className="mt-1 min-h-11 w-full rounded-xl border border-edge bg-glass px-3 text-fg"
+                  className="mt-1 min-h-[44px] w-full rounded-xl border border-edge bg-glass px-3 text-fg"
                 >
                   {payDates.map((d) => (
                     <option key={d} value={d}>
@@ -247,7 +247,7 @@ export function AdvocateSheet({
             Replies by <strong className="font-semibold text-fg">{CHANNEL_LABEL[inputs.contact].toLowerCase()}</strong>{" "}
             — from your contact rules.
           </p>
-          <label className="flex min-h-11 items-center gap-3 text-[0.9375rem] text-fg">
+          <label className="flex min-h-[44px] items-center gap-3 text-[0.9375rem] text-fg">
             <input
               type="checkbox"
               checked={inputs.keepRepliesShort}

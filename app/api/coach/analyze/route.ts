@@ -1,8 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { z } from "zod";
-import { coachSystem, parseCoachCustomer, type CoachCustomer } from "@/lib/ai/prompt";
-
+import { getProvider } from "@/lib/ai/providers";
+import { parseCoachCustomer, type CoachCustomer } from "@/lib/ai/prompt";
 import {
   analysePressure,
   bandFor,
@@ -10,6 +7,7 @@ import {
   type PressureReport,
   type PressureSpan,
 } from "@/lib/engines/pressure";
+import type { AnalysisDraft } from "@/lib/ai/provider";
 
 /**
  * The deeper pass over a draft message.
@@ -24,45 +22,14 @@ import {
  * highlighting correct even when the model's own idea of position is wrong.
  */
 
-const KINDS = [
-  "urgency",
-  "shame",
-  "threat",
-  "jargon",
-  "long-sentence",
-  "grade",
-  "multiple-asks",
-  "passive",
-  "consequence",
-  "abuse",
-] as const;
-
-const AnalysisSchema = z.object({
-  score: z
-    .number()
-    .describe(
-      "0-100. How likely this message is to make the customer disengage. 0 is safe to send, 65+ would plausibly cause another silence.",
-    ),
-  findings: z
-    .array(
-      z.object({
-        kind: z.enum(KINDS),
-        phrase: z
-          .string()
-          .describe("The exact substring from the message, copied character for character."),
-        why: z.string().describe("One sentence an agent can act on."),
-      }),
-    )
-    .describe("Only phrases genuinely present in the message. Empty if it is fine."),
-});
-
 export async function GET() {
   // Lets the client show which engines are live without exposing anything.
-  return Response.json({ claude: Boolean(process.env.ANTHROPIC_API_KEY) });
+  return Response.json({ claude: getProvider().available() });
 }
 
 export async function POST(request: Request) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const provider = getProvider();
+  if (!provider.available()) {
     return Response.json({ error: "not_configured" }, { status: 503 });
   }
 
@@ -86,65 +53,25 @@ export async function POST(request: Request) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
 
-  const client = new Anthropic();
+  const draft = await provider.analysePressure({ text, locked, customer });
+  if (!draft) return Response.json({ error: "upstream" }, { status: 502 });
 
-  try {
-    const response = await client.messages.parse({
-      model: "claude-opus-5-5",
-      max_tokens: 2000,
-      system: coachSystem(customer),
-      thinking: { type: "adaptive" },
-      // Latency matters here: this runs while the agent pauses mid-sentence.
-      output_config: { effort: "low", format: zodOutputFormat(AnalysisSchema) },
-      messages: [
-        {
-          role: "user",
-          content: `Score this draft message and list the exact phrases that do the damage.${
-            locked.length
-              ? `\n\nThese sentences are required compliance wording. Do not score or flag them:\n${locked.map((l) => `- ${l}`).join("\n")}`
-              : ""
-          }\n\n---\n${text}\n---`,
-        },
-      ],
-    });
-
-    const parsed = response.parsed_output;
-    if (!parsed) {
-      return Response.json({ error: "unparsed" }, { status: 502 });
-    }
-
-    return Response.json({ report: merge(text, parsed, locked) });
-  } catch (error) {
-    // Most specific first. Every branch leaves the client on the local engine.
-    if (error instanceof Anthropic.BadRequestError) {
-      return Response.json({ error: "bad_request" }, { status: 400 });
-    }
-    if (error instanceof Anthropic.AuthenticationError) {
-      return Response.json({ error: "auth" }, { status: 503 });
-    }
-    if (error instanceof Anthropic.RateLimitError) {
-      return Response.json({ error: "rate_limited" }, { status: 429 });
-    }
-    if (error instanceof Anthropic.APIError) {
-      return Response.json({ error: "upstream" }, { status: 502 });
-    }
-    return Response.json({ error: "unknown" }, { status: 500 });
-  }
+  return Response.json({ report: merge(text, draft, locked) });
 }
 
 /**
- * Combine Claude's judgement with the local structural analysis.
+ * Combine the model's judgement with the local structural analysis.
  *
- * Claude owns the score — it sees context the lexicon cannot. The spans are
+ * The model owns the score — it sees context the lexicon cannot. The spans are
  * the union of both, so a phrase the word list already caught stays
  * highlighted even if the model did not mention it, and readability stays
  * locally computed because it is arithmetic, not judgement.
+ *
+ * This stays in the route rather than moving behind the provider seam: it is
+ * domain logic about how two of our own engines combine, and it would be
+ * identical whichever model produced the draft.
  */
-function merge(
-  text: string,
-  parsed: z.infer<typeof AnalysisSchema>,
-  locked: string[],
-): PressureReport {
+function merge(text: string, parsed: AnalysisDraft, locked: string[]): PressureReport {
   const local = analysePressure(text, { locked });
   const spans: PressureSpan[] = [...local.spans];
 

@@ -4,11 +4,20 @@
  * Every accessibility claim in this product is checkable on the screen making
  * it. Contrast ratios are computed from the colours the browser actually
  * resolved, not from the hex values in the design tokens, so a translucent
- * surface composited over a gradient is measured as rendered. Touch targets
- * are measured from real bounding boxes.
+ * surface over another surface is composited exactly as the browser composites
+ * it, and ancestor `opacity` is folded in too. Touch targets are measured from
+ * real bounding boxes.
+ *
+ * Known limit, stated rather than hidden: only `background-color` is read, so
+ * a gradient or image behind the text is not sampled — the walk falls through
+ * to the opaque colour beneath it. Every gradient in this app is a decorative
+ * wash below 0.1 alpha, so the error is small, but it is an error and the
+ * panel should not imply otherwise.
  *
  * It is deliberately possible for this to report a failure. A proof panel
- * that can only ever say "pass" proves nothing.
+ * that can only ever say "pass" proves nothing — so everything it displays is
+ * measured here, including the heading outline and live-region politeness,
+ * which it used to assert on the strength of a non-zero count.
  */
 
 export interface ContrastIssue {
@@ -43,7 +52,14 @@ export interface A11yReport {
   reducedMotion: boolean;
   /** Headings found, to show the document outline is real. */
   headings: { level: number; text: string }[];
-  liveRegions: number;
+  /**
+   * True when the outline never skips a level going down (h1 → h3). Measured,
+   * not assumed: the panel used to print "in order" beside a bare count.
+   */
+  outlineOk: boolean;
+  /** The first skip found, for the panel to name. */
+  outlineProblem: string | null;
+  liveRegions: { total: number; assertive: number };
 }
 
 /** WCAG AA: 3:1 for large text (>=24px, or >=18.66px bold), else 4.5:1. */
@@ -58,7 +74,9 @@ export function auditAccessibility(root: HTMLElement | null): A11yReport {
     targets: { checked: 0, passing: 0, smallest: Infinity, issues: [] },
     reducedMotion: false,
     headings: [],
-    liveRegions: 0,
+    outlineOk: true,
+    outlineProblem: null,
+    liveRegions: { total: 0, assertive: 0 },
   };
   if (!root || typeof window === "undefined") return empty;
 
@@ -73,6 +91,20 @@ export function auditAccessibility(root: HTMLElement | null): A11yReport {
   const textEls = Array.from(root.querySelectorAll<HTMLElement>("*")).filter((el) => {
     if (el.closest("[data-a11y-ignore]")) return false;
     if (el.closest(".sr-only, .sr-only-focusable")) return false;
+    /*
+      Two exemptions WCAG 1.4.3 states outright, both of which this audit has
+      to honour or it reports failures that are not failures.
+
+      `aria-hidden` content is not shown to assistive tech and carries no
+      information — the breathing status dot is a pulse beside a label that
+      already says the thing. Measuring it flags the animation's own midpoint.
+
+      "Inactive user interface components" are exempt too. A disabled button is
+      dimmed *to communicate that it is disabled*; demanding 4.5:1 of it would
+      mean removing the only visual signal that it cannot be pressed.
+    */
+    if (el.closest('[aria-hidden="true"]')) return false;
+    if (el.closest(":disabled, [aria-disabled='true']")) return false;
     // Only elements that directly own visible text.
     const own = Array.from(el.childNodes).some(
       (n) => n.nodeType === Node.TEXT_NODE && n.textContent?.trim(),
@@ -91,7 +123,16 @@ export function auditAccessibility(root: HTMLElement | null): A11yReport {
     const bg = resolveBackground(el);
     if (!bg) continue;
 
-    const composited = composite(fg, bg);
+    /*
+      `opacity` on this element or any ancestor multiplies what actually
+      reaches the eye, and it is a separate property from the alpha in
+      `color`. Ignoring it is how a contrast checker reports a pass that the
+      screen does not deliver, so fold the accumulated factor into the
+      foreground alpha before compositing.
+    */
+    const alpha = fg[3] * inheritedOpacity(el);
+    if (alpha <= 0) continue;
+    const composited = composite([fg[0], fg[1], fg[2], alpha], bg);
     const ratio = contrastRatio(composited, bg);
     const fontPx = parseFloat(style.fontSize) || 16;
     const weight = parseInt(style.fontWeight, 10) || 400;
@@ -130,7 +171,7 @@ export function auditAccessibility(root: HTMLElement | null): A11yReport {
   });
 
   for (const el of interactive) {
-    const rect = effectiveTargetRect(el);
+    const rect = effectiveTargetSize(el);
     const min = Math.min(rect.width, rect.height);
     tChecked += 1;
     smallest = Math.min(smallest, min);
@@ -156,7 +197,26 @@ export function auditAccessibility(root: HTMLElement | null): A11yReport {
       text: (el.textContent ?? "").trim().slice(0, 50),
     }));
 
-  const liveRegions = root.querySelectorAll("[aria-live]").length;
+  /*
+    Walk the outline and find the first downward skip. Going back *up* any
+    distance is legal — a new h2 after an h4 closes two sections — so only an
+    increase of more than one level is a fault.
+  */
+  let outlineProblem: string | null = null;
+  for (let i = 1; i < headings.length; i += 1) {
+    const jump = headings[i].level - headings[i - 1].level;
+    if (jump > 1) {
+      outlineProblem = `h${headings[i - 1].level} → h${headings[i].level} at “${headings[i].text}”`;
+      break;
+    }
+  }
+
+  const liveNodes = Array.from(root.querySelectorAll("[aria-live]"));
+  const liveRegions = {
+    total: liveNodes.length,
+    assertive: liveNodes.filter((el) => el.getAttribute("aria-live") === "assertive")
+      .length,
+  };
 
   return {
     contrast: {
@@ -173,6 +233,8 @@ export function auditAccessibility(root: HTMLElement | null): A11yReport {
     },
     reducedMotion,
     headings,
+    outlineOk: outlineProblem === null,
+    outlineProblem,
     liveRegions,
   };
 }
@@ -184,9 +246,17 @@ export function auditAccessibility(root: HTMLElement | null): A11yReport {
  * label activates the control. Measuring the input alone would report a
  * failure that does not exist for the person using it — and a proof panel
  * that cries wolf gets ignored, which is worse than not having one.
+ *
+ * Measured with `offsetWidth`/`offsetHeight` rather than
+ * `getBoundingClientRect`, because the rect includes CSS transforms and the
+ * layout box does not. Screens here animate in from `scale: 0.98`, which
+ * renders every 44px control 43.1px wide for a quarter of a second — long
+ * enough for the panel to catch one and report eight failures that correct
+ * themselves before anyone can look. The size of a control is a property of
+ * its layout, not of whichever frame of a transition we sampled.
  */
-function effectiveTargetRect(el: HTMLElement): DOMRect {
-  const own = el.getBoundingClientRect();
+function effectiveTargetSize(el: HTMLElement): { width: number; height: number } {
+  const own = { width: el.offsetWidth, height: el.offsetHeight };
   const label = el.closest("label");
   if (!label) return own;
 
@@ -194,10 +264,9 @@ function effectiveTargetRect(el: HTMLElement): DOMRect {
   const controls = label.querySelectorAll("input, select, textarea, button");
   if (controls.length !== 1) return own;
 
-  const labelRect = label.getBoundingClientRect();
-  return Math.min(labelRect.width, labelRect.height) >
-    Math.min(own.width, own.height)
-    ? labelRect
+  const wrapper = { width: label.offsetWidth, height: label.offsetHeight };
+  return Math.min(wrapper.width, wrapper.height) > Math.min(own.width, own.height)
+    ? wrapper
     : own;
 }
 
@@ -214,9 +283,48 @@ function parseColor(value: string): RGBA | null {
 }
 
 /**
+ * The product of the *settled* `opacity` on this element and every ancestor.
+ *
+ * A single `opacity: 0.6` wrapper quietly costs 40% of the contrast of
+ * everything inside it, and nothing in the computed `color` of the text
+ * reflects that — so it has to be folded in.
+ *
+ * "Settled" is the whole difficulty. A fade-in passes through every value
+ * between 0 and 1, and a panel that reports whichever frame it happened to
+ * catch is worse than one that ignores opacity altogether: it fails at random
+ * and gets dismissed. Two sources are therefore read as 1:
+ *
+ *  · an inline `style.opacity`, which is how animation libraries drive a fade
+ *    (Framer Motion writes one on every animated element here) — a design
+ *    decision to dim something is written as a class or a rule, not inline;
+ *  · any element with a running animation, which covers CSS keyframes such as
+ *    the breathing status dot.
+ *
+ * What survives is static dimming — the case worth catching.
+ */
+function inheritedOpacity(el: HTMLElement): number {
+  let factor = 1;
+  let node: HTMLElement | null = el;
+  while (node) {
+    const animating =
+      node.style.opacity !== "" ||
+      (typeof node.getAnimations === "function" && node.getAnimations().length > 0);
+    if (!animating) {
+      const value = parseFloat(window.getComputedStyle(node).opacity);
+      if (!Number.isNaN(value) && value < 1) factor *= value;
+    }
+    node = node.parentElement;
+  }
+  return factor;
+}
+
+/**
  * Walk up compositing every translucent background until an opaque one is
- * found. This is what makes the glass surfaces measurable: their alpha is
+ * found. This is what makes layered surfaces measurable: their alpha is
  * blended exactly as the browser blends it.
+ *
+ * Only `background-color` is read — see the note at the top of the file about
+ * gradients.
  */
 function resolveBackground(el: HTMLElement): RGBA | null {
   const layers: RGBA[] = [];
@@ -231,11 +339,11 @@ function resolveBackground(el: HTMLElement): RGBA | null {
     node = node.parentElement;
   }
 
-  if (layers.length === 0) return [242, 245, 250, 1]; // --color-void
+  if (layers.length === 0) return [246, 247, 248, 1]; // --color-void
 
   // Bottom-most layer first, then composite upward.
   let base: RGBA = layers[layers.length - 1];
-  if (base[3] < 1) base = composite(base, [242, 245, 250, 1]);
+  if (base[3] < 1) base = composite(base, [246, 247, 248, 1]);
   for (let i = layers.length - 2; i >= 0; i -= 1) {
     base = composite(layers[i], base);
   }

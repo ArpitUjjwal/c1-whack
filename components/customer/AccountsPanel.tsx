@@ -3,6 +3,8 @@
 import { Disclosure } from "@/components/ui/Disclosure";
 import { Meter } from "@/components/ui/Meter";
 import { Panel } from "@/components/ui/Panel";
+import { ListGroup, ListRow } from "@/components/ui/ListRow";
+import { SectionHeader } from "@/components/ui/SectionHeader";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { maskTail, money, shortDate } from "@/lib/format";
 import { selectCreditUtilisation } from "@/lib/selectors";
@@ -141,26 +143,30 @@ export function AccountsPanel({
       </Panel>
 
       {/* ----------------------------------------------------- bills ahead */}
-      <Panel as="article" className="p-5">
-        <h3 className="font-semibold text-fg">Bills coming up</h3>
-        <p className="mt-1 text-sm text-fg-3">
+      {/*
+        A grouped row list rather than a card of custom markup: this is the
+        shape the real app uses for any run of similar things, and the rows
+        carry their own 56px target and hairline so every list on every screen
+        behaves the same way.
+      */}
+      <div>
+        <SectionHeader level={3}>Bills coming up</SectionHeader>
+        <p className="px-4 pb-2 text-sm text-fg-3">
           Already subtracted from your safe-to-spend number.
         </p>
-        <ul className="mt-3 divide-y divide-edge">
+        <ListGroup>
           {state.bills.map((bill) => (
-            <li key={bill.id} className="flex items-center justify-between gap-3 py-2.5">
-              <span>
-                <span className="block text-fg">{bill.name}</span>
-                <span className="block text-xs text-fg-3">
-                  {bill.autopay ? "Pays itself" : "You pay this one"} ·{" "}
-                  {shortDate(bill.dueDate)}
-                </span>
-              </span>
-              <span className="tnum font-semibold text-fg">{money(bill.amount)}</span>
-            </li>
+            <ListRow
+              key={bill.id}
+              icon={bill.autopay ? "check" : "clock"}
+              title={bill.name}
+              detail={`${bill.autopay ? "Pays itself" : "You pay this one"} · ${shortDate(bill.dueDate)}`}
+              value={money(bill.amount)}
+              trailing="none"
+            />
           ))}
-        </ul>
-      </Panel>
+        </ListGroup>
+      </div>
     </section>
   );
 }

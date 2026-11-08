@@ -290,13 +290,29 @@ export function JudgeOverlay({
 
                     <AuditRow
                       label="Heading structure"
-                      pass={a11y.headings.length > 0}
-                      detail={`${a11y.headings.length} headings in order`}
+                      pass={a11y.headings.length > 0 && a11y.outlineOk}
+                      detail={
+                        a11y.outlineProblem
+                          ? `${a11y.headings.length} headings · level skipped: ${a11y.outlineProblem}`
+                          : `${a11y.headings.length} headings, no level skipped`
+                      }
                     />
+                    {/*
+                      Only an assertive region fails. A screen with none at all
+                      is not a fault — the account list has nothing that
+                      updates under the reader, and demanding a live region of
+                      every screen would be marking static content wrong.
+                    */}
                     <AuditRow
                       label="Polite live regions"
-                      pass={a11y.liveRegions > 0}
-                      detail={`${a11y.liveRegions} present · none assertive`}
+                      pass={a11y.liveRegions.assertive === 0}
+                      detail={
+                        a11y.liveRegions.assertive > 0
+                          ? `${a11y.liveRegions.total} present · ${a11y.liveRegions.assertive} assertive — interrupts the reader`
+                          : a11y.liveRegions.total > 0
+                            ? `${a11y.liveRegions.total} present · none assertive`
+                            : "None on this screen · nothing updates under the reader"
+                      }
                     />
                     <AuditRow
                       label="Reduced motion"
@@ -311,8 +327,12 @@ export function JudgeOverlay({
 
                   <p className="mt-4 text-xs text-fg-3">
                     Ratios are computed from resolved colours, compositing every
-                    translucent layer exactly as the browser does — so the
-                    panels are measured as rendered, not as designed.
+                    translucent layer and every inherited{" "}
+                    <code className="glass rounded px-1">opacity</code> exactly
+                    as the browser does — so the panels are measured as
+                    rendered, not as designed. One known limit: background{" "}
+                    <em>gradients</em> are not sampled, so text over one is
+                    measured against the solid colour beneath it.
                   </p>
                 </section>
               ) : null}

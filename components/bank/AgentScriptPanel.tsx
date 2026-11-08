@@ -19,9 +19,12 @@ import type { AgentScript } from "@/lib/scripts";
  */
 export function AgentScriptPanel({
   script,
+  source = "local",
   onUseLine,
 }: {
   script: AgentScript;
+  /** Which engine wrote this script. Shown, never hidden. */
+  source?: "local" | "claude";
   onUseLine?: (line: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -45,11 +48,18 @@ export function AgentScriptPanel({
         <h2 id="script-heading" className="font-semibold text-fg">
           What to say
         </h2>
+        {/*
+          Which engine wrote the words on screen. "Follows the customer's
+          state" was true of the template too, so it could not tell the two
+          apart — and the agent is about to say this out loud.
+        */}
         <StatusPill tone="calm">
           <span className="breathe" aria-hidden="true">
             ●
           </span>
-          Follows the customer&apos;s state
+          {source === "claude"
+            ? "Written for this call"
+            : "Follows the customer's state"}
         </StatusPill>
       </div>
 

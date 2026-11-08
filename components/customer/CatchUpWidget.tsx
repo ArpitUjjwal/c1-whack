@@ -156,7 +156,7 @@ export function CatchUpWidget({
       </AnimatePresence>
 
       <div className="mt-5 space-y-2.5">
-        <Button size="lg" variant="calm" fullWidth onClick={() => setConfirming(true)}>
+        <Button size="lg" variant="brand" fullWidth onClick={() => setConfirming(true)}>
           Pay {money(amount)} now
         </Button>
         <Button size="md" variant="outline" fullWidth onClick={onNeedHelp}>
@@ -206,7 +206,7 @@ export function CatchUpWidget({
         <div className="mt-5 space-y-2.5">
           <Button
             size="lg"
-            variant="calm"
+            variant="brand"
             fullWidth
             onClick={() => {
               setConfirming(false);

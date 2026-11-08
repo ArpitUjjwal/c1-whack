@@ -91,11 +91,70 @@ export const DEVICE_DEFAULTS: DevicePrefs = SERVER;
 let cache: DevicePrefs | null = null;
 const listeners = new Set<() => void>();
 
+const FONTS: ReadingFont[] = ["standard", "lexend", "atkinson"];
+const SIZES: TextSize[] = ["standard", "large", "xlarge"];
+const TINTS: Tint[] = ["none", "cream", "blue"];
+
+/**
+ * Keep only the stored values that are actually usable.
+ *
+ * Shared state has `isIntactState` guarding it; these preferences had nothing,
+ * and they fail more quietly than state does. A stored `textSize` of `"huge"`
+ * — from an older build, a hand-edited key, a half-finished experiment —
+ * survives the spread, reaches `data-size` on the phone frame, matches no CSS
+ * rule, and the text simply never gets bigger. No crash, no warning: the
+ * accessibility setting just stops working, which is the one failure this app
+ * cannot afford to have happen silently.
+ *
+ * Anything unrecognised falls back to that field's default rather than
+ * discarding the whole object, so one bad key never costs the customer the
+ * other settings they chose.
+ */
+function sanitise(raw: unknown): DevicePrefs {
+  if (!raw || typeof raw !== "object") return SERVER;
+  const v = raw as Record<string, unknown>;
+
+  const bool = (x: unknown, fallback: boolean) =>
+    typeof x === "boolean" ? x : fallback;
+  const pick = <T extends string>(x: unknown, allowed: T[], fallback: T): T =>
+    typeof x === "string" && (allowed as string[]).includes(x) ? (x as T) : fallback;
+
+  return {
+    ...SERVER,
+    safeMode: bool(v.safeMode, SERVER.safeMode),
+    focusDeclined: bool(v.focusDeclined, SERVER.focusDeclined),
+    adaptiveEnabled: bool(v.adaptiveEnabled, SERVER.adaptiveEnabled),
+    welcomeBackSeen: bool(v.welcomeBackSeen, SERVER.welcomeBackSeen),
+    font: pick(v.font, FONTS, SERVER.font),
+    textSize: pick(v.textSize, SIZES, SERVER.textSize),
+    wideSpacing: bool(v.wideSpacing, SERVER.wideSpacing),
+    tint: pick(v.tint, TINTS, SERVER.tint),
+    highContrast: bool(v.highContrast, SERVER.highContrast),
+    // Clamped rather than defaulted: a rate outside this range is inaudible
+    // or unintelligible, and the slider cannot produce one.
+    speechRate:
+      typeof v.speechRate === "number" && Number.isFinite(v.speechRate)
+        ? Math.min(2, Math.max(0.5, v.speechRate))
+        : SERVER.speechRate,
+    dismissedTips: Array.isArray(v.dismissedTips)
+      ? v.dismissedTips.filter((x): x is string => typeof x === "string").slice(0, 50)
+      : SERVER.dismissedTips,
+    listenFirst: bool(v.listenFirst, SERVER.listenFirst),
+    onboarded: bool(v.onboarded, SERVER.onboarded),
+    struggles: Array.isArray(v.struggles)
+      ? (v.struggles.filter((x) => typeof x === "string") as DevicePrefs["struggles"])
+      : SERVER.struggles,
+    sharePreferences: bool(v.sharePreferences, SERVER.sharePreferences),
+    epoch:
+      typeof v.epoch === "number" && Number.isFinite(v.epoch) ? v.epoch : SERVER.epoch,
+  };
+}
+
 function read(): DevicePrefs {
   if (cache) return cache;
   try {
     const raw = window.localStorage.getItem(KEY);
-    cache = raw ? { ...SERVER, ...(JSON.parse(raw) as Partial<DevicePrefs>) } : SERVER;
+    cache = raw ? sanitise(JSON.parse(raw)) : SERVER;
   } catch {
     cache = SERVER;
   }

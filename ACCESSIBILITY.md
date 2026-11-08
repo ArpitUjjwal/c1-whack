@@ -424,9 +424,10 @@ Carried through both surfaces:
 
 | Area | Implementation |
 | --- | --- |
-| Contrast | Every text token pinned to a measured ratio; floor is 4.5:1. `--color-fg-3` (5.5:1 on the canvas, 4.96:1 at its worst composite) is the lightest text permitted. |
-| Brand red | 5.0:1 on the light canvas, so it clears text contrast on its own; white on red is 5.5:1 for text over a red fill, and `--color-red-fg` (7.0:1) is the darker paired red used on a red wash. |
-| Focus | One unmistakable style: 2px solid ink (`#0d1522`), 2px offset, on every interactive element — it clears the white panels and the saturated accent fills alike. |
+| Contrast | Every text token pinned to a measured ratio; floor is 4.5:1. The palette is Capital One UK — navy `#1C2641` on the `#F6F7F8` canvas is 13.6:1 — and where a brand value would not clear the floor the hue is kept and the lightness pulled down until it does. `--color-fg-3` (5.5:1) is the lightest text permitted. |
+| Brand red | Capital One red `#D03027` is 4.7:1 on the canvas, so it clears text contrast on its own; white on red is 5.1:1 for text over a red fill, and `--color-red-fg` (7.1:1) is the darker paired red used on a red wash. |
+| Focus | One unmistakable style: 2px solid navy (`#1C2641`), 2px offset, on every interactive element — it clears the white cards and the saturated accent fills alike. |
+| Yellow | The Capital One UK action yellow (`#FDE236`) is a **fill-only** token. Navy on it is 11.2:1; as a text colour on white it would be 1.30:1, so it is paired with `--color-on-cta` and never used as type. |
 | Touch targets | 44px minimum height at every button size (WCAG 2.5.5 AAA; the AA floor is 24px). |
 | Live regions | `aria-live="polite"` throughout — never `assertive`. A screen reader finishes its sentence before announcing an incoming nudge, which matters a great deal mid-task. |
 | Dialogs | `role="dialog"`, `aria-modal`, labelled by their own heading, focus moved in on open, Tab trapped inside, Escape closes, focus restored to the trigger. |
@@ -446,13 +447,24 @@ Press <kbd>?</kbd> on either surface. `lib/engines/a11y-audit.ts` re-measures
 the live DOM and reports:
 
 - **Contrast** of every element that owns visible text, computed from the
-  colours the browser actually resolved — compositing each translucent layer
-  exactly as the browser does, so the translucent panels are measured *as rendered*,
-  not as designed. Large-text thresholds (3:1) are applied where they apply.
+  colours the browser actually resolved — compositing each translucent layer,
+  and each inherited `opacity`, exactly as the browser does, so surfaces are
+  measured *as rendered*, not as designed. Large-text thresholds (3:1) are
+  applied where they apply. Two things are exempt, as WCAG 1.4.3 exempts them:
+  `aria-hidden` decoration, and disabled controls, which are dimmed precisely
+  *to* signal that they cannot be pressed. One known limit, stated rather than
+  hidden: background **gradients** are not sampled, so text over one is
+  measured against the solid colour beneath it.
 - **Touch targets**, using the *effective* hit area: a 16px radio inside a 44px
-  label is a 44px target, because the label activates it.
-- **Heading structure**, **live-region count**, and the current
-  **reduced-motion** state.
+  label is a 44px target, because the label activates it. Measured from the
+  layout box rather than the painted rect, so a screen animating in from
+  `scale: 0.98` is not reported as eight undersized controls.
+- **Heading structure** — the outline is walked and a skipped level (h2 → h4)
+  is named and failed, rather than the panel printing "in order" beside a
+  count it never checked.
+- **Live regions**, counted *and* checked for politeness: an `assertive`
+  region is reported as a failure, not summarised away.
+- The current **reduced-motion** state.
 - On the customer surface, the **cognitive load breakdown** with the formula
   printed beside its own result.
 

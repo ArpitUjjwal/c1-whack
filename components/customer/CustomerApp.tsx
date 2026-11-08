@@ -25,6 +25,7 @@ import { Onboarding, type OnboardingControl } from "./Onboarding";
 import { DemoDirector } from "@/components/system/DemoDirector";
 import { JudgeOverlay } from "@/components/system/JudgeOverlay";
 import { Button } from "@/components/ui/Button";
+import { CardTile } from "@/components/ui/CardTile";
 import { ListenFirstContext, SpeechRateContext } from "@/components/ui/ListenButton";
 import { remindersFor } from "@/lib/reminders";
 import { IN_APP_TIPS } from "@/lib/insights-data";
@@ -410,7 +411,20 @@ export function CustomerApp() {
 
               {!welcomeBack && tab === "home" ? (
                 <>
-                  <h2 className="sr-only">Home</h2>
+                  <h2 className="sr-only">At a glance</h2>
+
+                  {/*
+                    The card first, the way the real app opens — the object you
+                    carry, with what is owed on it. Everything below is this
+                    account explained; leading with the figure alone left the
+                    screen starting mid-sentence.
+                  */}
+                  <CardTile
+                    name={state.credit.nickname}
+                    last4={state.credit.accountNumber.slice(-4)}
+                    balance={money(state.credit.balance)}
+                    caption="Current balance"
+                  />
 
                   <Button variant="outline" size="md" fullWidth onClick={enterSafeMode}>
                     I can&apos;t handle banking today

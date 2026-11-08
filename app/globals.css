@@ -1,70 +1,79 @@
 @import "tailwindcss";
 
 /*
-  Clarity — design tokens.
+  Clarity — design tokens, Capital One UK.
 
-  Light "calm paper". Depth comes from a grey canvas, near-white panels, a
-  hairline edge and a soft shadow — not from translucency or glow. Frosted
-  glass over a light field reads as nothing, so the surface recipe below is
-  paper raised off a page rather than glass over a deep one.
+  The palette is sampled from the UK app rather than invented: the navy field
+  (#1C2641) reads identically across three reference screens, the CTA yellow
+  (#FDE236) from the "Hide my PIN" and "Continue to the app" buttons, and the
+  app canvas (#F6F7F8) from the in-app background. White cards, a hairline
+  edge and a soft shadow carry the depth — no translucency, no glow.
 
-  Every text token below is pinned to a measured contrast ratio against the
-  canvas, and the floor is 4.5:1. The Proof Layer re-measures these at runtime
-  from the live DOM, so the numbers in these comments are checkable rather than
-  claimed.
+  Every text token is pinned to a measured contrast ratio against the canvas,
+  and the floor is 4.5:1. Where a brand value would not clear the floor, the
+  hue is kept and the lightness pulled down until it does; the ratio is stated
+  beside it. The Proof Layer re-measures all of this at runtime from the live
+  DOM, so these numbers are checkable rather than claimed.
 
-  Capital One red is deliberately scarce: it appears in the logo and on the
-  Pressure Index, and nowhere else. Red never marks the customer's own money —
-  only the bank's own harmful language.
+  Capital One red is deliberately scarce: the logo and the Pressure Index, and
+  nowhere else. Red never marks the customer's own money — only the bank's own
+  harmful language.
 */
 @theme {
   /* ---- Field -------------------------------------------------------- */
-  --color-void: #f2f5fa; /* the canvas */
-  --color-deep: #e8edf5; /* recessed surfaces — sheets, bottom nav */
-  --color-abyss: #dfe6ef; /* furthest backdrop, behind the device */
+  --color-void: #f6f7f8; /* the app canvas */
+  --color-deep: #edeff2; /* recessed — bottom nav, sheets, section bands */
+  --color-abyss: #1c2641; /* the navy field *behind* the device */
 
-  /* Translucent surfaces, composited over the field. White over grey, so a
-     panel lifts off the canvas instead of sinking into it. */
-  --color-glass: rgba(255, 255, 255, 0.72);
-  --color-glass-2: rgba(255, 255, 255, 0.92);
+  /* Cards. The UK app is flat white on grey, so these are opaque: the name
+     is historical, and kept so every component picks the change up unchanged. */
+  --color-glass: #ffffff;
+  --color-glass-2: #ffffff;
   --color-glass-3: #ffffff;
-  --color-edge: rgba(13, 21, 34, 0.1);
-  --color-edge-2: rgba(13, 21, 34, 0.16);
+  --color-edge: rgba(28, 38, 65, 0.1);
+  --color-edge-2: rgba(28, 38, 65, 0.16);
 
-  /* Modal scrim. A light wash cannot make an overlay recede, so this one is
-     ink: 55% of the text colour over whatever is behind it. */
-  --color-scrim: rgba(13, 21, 34, 0.55);
-  /* Recessed track for meters, where a near-white fill would be invisible. */
-  --color-track: rgba(13, 21, 34, 0.08);
+  /* Modal scrim: 55% of the navy over whatever is behind it. */
+  --color-scrim: rgba(28, 38, 65, 0.55);
+  /* Recessed track for meters, where a white fill would be invisible. */
+  --color-track: rgba(28, 38, 65, 0.1);
 
   /* ---- Text --------------------------------------------------------- */
-  --color-fg: #0d1522; /* 16.8:1 on --color-void */
-  --color-fg-2: #4a5a70; /* 6.4:1 */
-  --color-fg-3: #556579; /* 5.5:1 — the quietest text; 4.96:1 at its worst composite */
+  --color-fg: #1c2641; /* the brand navy — 13.6:1 on the canvas, 14.6:1 on white */
+  --color-fg-2: #3d4654; /* 9.0:1 */
+  --color-fg-3: #5c6573; /* 5.5:1 — the quietest text permitted */
+
+  /* ---- Primary action ----------------------------------------------- */
+  /*
+    FILL ONLY. Navy on this yellow is 11.2:1, but the yellow as *text* on white
+    is 1.30:1 — it fails by a factor of three and must never become a text
+    colour. That is exactly how the real app uses it, and the paired token
+    below is the only foreground it is allowed to carry.
+  */
+  --color-cta: #fde236;
+  --color-on-cta: #1c2641;
 
   /* ---- Semantic ----------------------------------------------------- */
   /*
-    Each accent is dark enough to serve three jobs at once: as text on the
-    canvas, as text on its own 10% wash (the StatusPill recipe, 12px semibold,
-    so 4.5:1 applies), and as a fill carrying canvas-light text on top. The
-    second number below is that wash case, which is the tight one.
+    Each accent serves three jobs: text on the canvas, text on its own 10%
+    wash (the StatusPill recipe — 12px semibold, so 4.5:1 applies), and a fill
+    carrying light text. The second number is that wash case, which is tighter.
   */
   --color-pos: #076b48; /* 6.0:1 · 5.2:1 on wash — resolved, safe, caught up */
   --color-pos-dim: rgba(7, 107, 72, 0.1);
   --color-attn: #7a4900; /* 6.9:1 · 6.0:1 — needs a look, never alarm */
   --color-attn-dim: rgba(122, 73, 0, 0.1);
-  --color-link: #0f56b8; /* 6.3:1 · 5.4:1 — interactive */
-  --color-link-dim: rgba(15, 86, 184, 0.1);
-  --color-calm: #5134c4; /* 7.3:1 · 6.2:1 — agent presence, gentle */
-  --color-calm-dim: rgba(81, 52, 196, 0.1);
+  --color-link: #0a6e78; /* 5.4:1 · 4.7:1 — the UK action teal, darkened to clear */
+  --color-link-dim: rgba(10, 110, 120, 0.1);
+  --color-calm: #243e7a; /* 9.6:1 · 8.2:1 — agent presence, gentle */
+  --color-calm-dim: rgba(36, 62, 122, 0.1);
 
-  /* Brand red, untouched. On a light canvas it clears text contrast on its
-     own (5.0:1), and white on it is 5.5:1, so it works as fill or as type.
-     --color-red-fg is the darker paired text red at 7.0:1, used where red sits
-     on its own wash. */
-  --color-red: #cc2427;
+  /* Capital One red. 4.7:1 on the canvas, so it clears body text on its own,
+     and white on it is 5.1:1. --color-red-fg is the darker paired red (7.1:1)
+     used where red sits on its own wash. */
+  --color-red: #d03027;
   --color-red-fg: #a81115;
-  --color-red-dim: rgba(204, 36, 39, 0.1);
+  --color-red-dim: rgba(208, 48, 39, 0.1);
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 
@@ -133,15 +142,15 @@ body {
 .glass {
   background: var(--color-glass);
   border: 1px solid var(--color-edge);
-  box-shadow: 0 1px 2px 0 rgba(13, 21, 34, 0.06);
+  box-shadow: 0 1px 2px 0 rgba(28, 38, 65, 0.06);
 }
 
 .glass-2 {
   background: var(--color-glass-2);
   border: 1px solid var(--color-edge-2);
   box-shadow:
-    0 1px 2px 0 rgba(13, 21, 34, 0.06),
-    0 12px 32px -12px rgba(13, 21, 34, 0.18);
+    0 1px 2px 0 rgba(28, 38, 65, 0.06),
+    0 12px 32px -12px rgba(28, 38, 65, 0.18);
 }
 
 /* A soft coloured bloom behind a card. Decorative; never carries meaning. */
@@ -166,7 +175,7 @@ body {
   pointer-events: none;
   background: radial-gradient(
     ellipse at 50% 0%,
-    var(--bloom-color, rgba(15, 86, 184, 0.08)),
+    var(--bloom-color, rgba(10, 110, 120, 0.07)),
     transparent 70%
   );
 }
@@ -178,7 +187,7 @@ body {
   including the saturated accent fills.
 */
 :where(a, button, [role="button"], input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 2px solid #0d1522;
+  outline: 2px solid #1c2641;
   outline-offset: 2px;
   border-radius: 0.5rem;
 }
@@ -212,14 +221,14 @@ body {
 /* Quiet scrollbars; the default chrome is heavier than anything else here. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(13, 21, 34, 0.22) transparent;
+  scrollbar-color: rgba(28, 38, 65, 0.22) transparent;
 }
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgba(13, 21, 34, 0.2);
+  background: rgba(28, 38, 65, 0.2);
   border-radius: 999px;
   border: 3px solid transparent;
   background-clip: content-box;
@@ -272,7 +281,7 @@ body {
   background: linear-gradient(
     to bottom,
     transparent,
-    rgba(15, 86, 184, 0.08),
+    rgba(10, 110, 120, 0.08),
     transparent
   );
   animation: c1-scan 3.5s linear infinite;
@@ -348,24 +357,24 @@ body {
 [data-tint="cream"] {
   --color-void: #fbf6e9;
   --color-deep: #f3ecda;
-  --color-glass: rgba(255, 252, 243, 0.85);
-  --color-glass-2: rgba(255, 252, 243, 0.95);
+  --color-glass: #fffcf3;
+  --color-glass-2: #fffcf3;
   --color-glass-3: #fffcf3;
 }
 [data-tint="blue"] {
   --color-void: #edf3fb;
   --color-deep: #e1eaf6;
-  --color-glass: rgba(246, 250, 255, 0.85);
-  --color-glass-2: rgba(246, 250, 255, 0.95);
+  --color-glass: #f6faff;
+  --color-glass-2: #f6faff;
   --color-glass-3: #f6faff;
 }
 
 /* High contrast: every text token near-black, solid surfaces, strong edges. */
 [data-contrast="high"] {
-  --color-fg-2: #0d1522;
-  --color-fg-3: #1c2738;
-  --color-edge: rgba(13, 21, 34, 0.55);
-  --color-edge-2: rgba(13, 21, 34, 0.75);
+  --color-fg-2: #1c2641;
+  --color-fg-3: #2a3550;
+  --color-edge: rgba(28, 38, 65, 0.55);
+  --color-edge-2: rgba(28, 38, 65, 0.75);
   --color-glass: #ffffff;
   --color-glass-2: #ffffff;
 }

@@ -39,7 +39,7 @@ export function TopBar({
           </div>
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+        <div className="ml-auto flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 text-xs">
           <span className="glass inline-flex items-center gap-2 rounded-full px-3 py-1.5 font-medium text-fg-2">
             <LiveDot online={peerCount > 0} />
             {peerCount > 0
@@ -75,12 +75,19 @@ export function TopBar({
             Customer view
           </Link>
 
-          <label className="inline-flex items-center gap-2 font-medium text-fg-2">
+          {/*
+            `min-w-0` on both, because a flex item defaults to `min-width:auto`
+            and a <select> is as wide as its longest <option> — and these
+            options carry a whole sentence each. Without it the switcher
+            refused to shrink and pushed the document 248px wider than a phone
+            viewport, which is a horizontal scrollbar on the whole console.
+          */}
+          <label className="inline-flex min-w-0 items-center gap-2 font-medium text-fg-2">
             Customer
             <select
               value={profileId}
               onChange={(e) => onSwitchProfile(e.target.value as ProfileId)}
-              className="min-h-11 rounded-lg border border-edge bg-glass-3 px-2 text-sm font-semibold text-fg"
+              className="min-h-11 min-w-0 max-w-full rounded-lg border border-edge bg-glass-3 px-2 text-sm font-semibold text-fg"
               title={profileConfig(profileId).summary}
             >
               {PROFILE_IDS.map((id) => (

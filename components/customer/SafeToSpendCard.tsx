@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Disclosure } from "@/components/ui/Disclosure";
 import { ListenButton } from "@/components/ui/ListenButton";
 import { Panel } from "@/components/ui/Panel";
+import { WhatThisMeans } from "./WhatThisMeans";
 import { money } from "@/lib/format";
 import type { SafeToSpend } from "@/lib/selectors";
 
@@ -65,7 +66,25 @@ export function SafeToSpendCard({
         )}
       </p>
 
-      <div className="mt-4 border-t border-edge pt-3">
+      {/*
+        Two ways in, for two different questions. "Show the maths" answers
+        "where did this number come from" with the arithmetic; "what does this
+        mean" answers "what is this number" in words. Someone who finds a
+        table of subtractions hard to read needs the second one, and until now
+        the card only offered the first.
+      */}
+      <div className="mt-3 border-t border-edge pt-1">
+        <WhatThisMeans
+          subject={{
+            kind: "safe-to-spend",
+            available: safe.available,
+            committed: safe.committed,
+            horizonDays: safe.horizonDays,
+          }}
+        />
+      </div>
+
+      <div className="border-t border-edge pt-3">
         <Disclosure
           label="Show the maths"
           openLabel="Hide the maths"

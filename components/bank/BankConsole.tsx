@@ -13,6 +13,7 @@ import { TopBar } from "./TopBar";
 import { DemoDirector } from "@/components/system/DemoDirector";
 import { JudgeOverlay } from "@/components/system/JudgeOverlay";
 import { buildAgentScript } from "@/lib/scripts";
+import { useAgentScript } from "@/lib/ai/useAgentScript";
 import { useRealtimeSync } from "@/lib/realtime";
 import { selectSafeToSpend } from "@/lib/selectors";
 import type { Tone } from "@/lib/types";
@@ -30,10 +31,17 @@ export function BankConsole() {
   } = useRealtimeSync();
 
   const safe = useMemo(() => selectSafeToSpend(state), [state]);
-  const script = useMemo(
+  const localScript = useMemo(
     () => buildAgentScript(state, { customerOnline, customerView: null }),
     [state, customerOnline],
   );
+  /*
+    The template script renders immediately; a written one replaces it only if
+    it arrives and clears the pressure check on the server. The agent never
+    waits and never sees a spinner here.
+  */
+  const { script, source: scriptSource } = useAgentScript(state, localScript);
+
   const customerPeers = peers.filter((peer) => peer.role === "customer").length;
 
   const [seedLine, setSeedLine] = useState<string | null>(null);
@@ -90,7 +98,7 @@ export function BankConsole() {
 
           <div className="space-y-4">
             <PressureComposer key={seedLine ?? "composer"} state={state} onSend={sendNudge} now={now} />
-            <AgentScriptPanel script={script} onUseLine={setSeedLine} />
+            <AgentScriptPanel script={script} source={scriptSource} onUseLine={setSeedLine} />
           </div>
         </div>
 

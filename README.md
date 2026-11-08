@@ -187,20 +187,47 @@ cannot take down a newer one.
 Both surfaces dispatch into one pure reducer, so the customer's payment preview
 is computed by the same code that performs it.
 
-## Claude (optional)
+## AI (optional)
 
 Without a key everything runs on local, deterministic engines and the demo is
-complete. With one, Claude adds a deeper Pressure Index pass, bespoke rewrites,
-and drafts the Advocate's support request from validated facts only.
+complete. With one, five surfaces get sharper:
+
+| Surface | What AI adds | Without a key |
+| --- | --- | --- |
+| **Pressure Index** | A second pass that sees tone and implication, not just a word list | The lexicon, on every keystroke |
+| **Rewrite** | A bespoke rewrite in the picked tone | The template rewriter |
+| **Financial Advocate** | Drafts the request from validated facts only | A deterministic draft |
+| **"What does this mean?"** | Explains a figure on the customer's own screen, in plain words | The standard explanation for that screen |
+| **Agent script** | Writes the opener, the lines and the "don't say" list for this call | `buildAgentScript`, from templates |
 
 ```bash
 cp .env.example .env.local   # add ANTHROPIC_API_KEY, then restart
 ```
 
-Server-side only (`app/api/coach/*`, `app/api/advocate/*`); the key never
-reaches the browser. Every failure path — no key, rate limit, dropped
-connection, refusal — falls back silently to the local engine, and the UI says
-which produced the result.
+**One seam, not five integrations.** `lib/ai/provider.ts` defines the interface
+in domain types; `lib/ai/providers/claude.ts` implements it. No vendor SDK type
+crosses that boundary, so another provider is a new file in `providers/` and a
+line in `getProvider()` — set `AI_PROVIDER` to choose. With no credentials the
+seam returns a provider whose every method resolves `null`, and since `null`
+already means "use the local engine", nothing downstream knows whether a key
+exists.
+
+**Two rules hold everywhere.** The model never decides anything — every figure,
+date and entitlement comes from state the server validated first. And the model
+is held to the product's own standards rather than trusted: an explanation is
+measured by the same readability engine that grades the bank's messages and
+discarded above Flesch–Kincaid grade 8, and a generated agent script is scored
+by the same Pressure Index that scores the agent's own words and discarded if
+it comes back pressuring.
+
+Server-side only (`app/api/coach/*`, `app/api/advocate/*`, `app/api/explain`,
+`app/api/script`); the key never reaches the browser. Nothing measured on the
+customer's device is ever sent — the explainer is told to write plainly for
+everyone, and the phone applies that customer's own typeface, size and tint
+locally, so reading preferences stay on the phone. Every failure path — no key,
+rate limit, dropped connection, refusal, a malformed answer, an answer that
+fails our own check — falls back to the local engine, and the UI says which
+produced the result.
 
 > **Don't deploy publicly with `ANTHROPIC_API_KEY` set.** These routes have no
 > authentication, so anyone with the URL could spend your credits. Run the demo

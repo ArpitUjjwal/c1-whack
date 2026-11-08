@@ -94,7 +94,7 @@ const PROFILES: Record<ProfileId, ProfileConfig & { billSeeds: BillSeed[] }> = {
       accountNumber: "4417889200008842",
       ddReturnedDaysAgo: null,
       directDebit: false,
-      // Irregular: the grace rule needs the last three on time, and they aren't.
+      // Irregular: the grace rule needs six on time in a row, and they aren't.
       history: [true, false, true, true, false, true],
     },
     billSeeds: [
@@ -113,7 +113,7 @@ const PROFILES: Record<ProfileId, ProfileConfig & { billSeeds: BillSeed[] }> = {
     name: "Priya Shah",
     firstName: "Priya",
     memberSince: "2019",
-    setup: { onboarded: true, struggles: ["reading", "listening"], shared: true },
+    setup: { onboarded: true, struggles: ["reading"], shared: true },
     supportNote: "I read numbers better than paragraphs. Put the amount and the date first.",
     daysSinceLastOpen: 1,
     contact: { maxPerWeek: 3, quietHours: { start: 22, end: 7 }, remindDaysBefore: 3 },

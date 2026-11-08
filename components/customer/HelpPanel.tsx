@@ -6,7 +6,6 @@ import { LiveDot } from "@/components/ui/LiveDot";
 import { Panel } from "@/components/ui/Panel";
 import { CREDIT_FILE_GENERAL } from "@/lib/compliance";
 import type { Action, AppState } from "@/lib/types";
-import { ReadingSettings } from "./ReadingSettings";
 import { StrugglesSettings } from "./StrugglesSettings";
 import { TrustPanel } from "./TrustPanel";
 import type { DevicePrefs } from "@/lib/device";
@@ -59,7 +58,6 @@ export function HelpPanel({
 
       <StrugglesSettings state={state} prefs={prefs} onPrefs={onChangePrefs} dispatch={dispatch} />
 
-      <ReadingSettings prefs={prefs} onChange={onChangePrefs} />
 
       <TrustPanel
         state={state}

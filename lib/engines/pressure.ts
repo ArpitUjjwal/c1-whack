@@ -43,7 +43,8 @@ export type FindingKind =
   | "multiple-asks"
   | "passive"
   | "consequence"
-  | "abuse";
+  | "abuse"
+  | "shouting";
 
 /**
  * Span kinds beyond the scored findings: `allowed` marks the one dated
@@ -99,6 +100,9 @@ const URGENCY: LexEntry[] = [
   { pattern: /\brequired to\b/gi, why: "Procedural compulsion." },
   { pattern: /\bimmediately\b/gi, why: "Manufactured urgency. There is no same-day deadline here." },
   { pattern: /\bright away\b/gi, why: "Manufactured urgency." },
+  { pattern: /\bright now\b/gi, why: "Manufactured urgency. There is no same-minute deadline here." },
+  { pattern: /\b(?:get|have) (?:this|it|that) (?:done|sorted|paid|cleared)\b/gi, why: "A demand, not an offer. Say what they can do, and leave the choice with them." },
+  { pattern: /\bdo it now\b|\bpay now\b/gi, why: "Manufactured urgency." },
   { pattern: /\bas soon as possible\b/gi, why: "Manufactured urgency." },
   { pattern: /\basap\b/gi, why: "Manufactured urgency, and an abbreviation." },
   { pattern: /\burgent(ly)?\b/gi, why: "Nothing here is urgent. Saying so costs trust." },
@@ -172,6 +176,11 @@ export function hasSpecificDate(text: string): boolean {
   return DATE_RE.test(text);
 }
 
+/** Capitalised words that are names, not shouting. */
+const ACRONYMS = new Set([
+  "APR", "UK", "ATM", "PIN", "ISA", "FCA", "DD", "ID", "OK", "PDF", "SMS", "URL", "GBP", "CONC",
+]);
+
 /* ------------------------------------------------------------- scoring --- */
 
 const WEIGHTS: Record<FindingKind, { each: number; cap: number; label: string }> = {
@@ -186,6 +195,8 @@ const WEIGHTS: Record<FindingKind, { each: number; cap: number; label: string }>
   consequence: { each: 10, cap: 30, label: "Consequence with no date, or said twice" },
   // One insult is enough to make a message unsendable.
   abuse: { each: 70, cap: 100, label: "Insults, contempt or swearing" },
+  // Capitals and exclamation marks read as shouting in a demand.
+  shouting: { each: 9, cap: 27, label: "Shouting: capitals or exclamation marks" },
 };
 
 function weightOf(kind: SpanKind): number {
@@ -355,6 +366,35 @@ export function analysePressure(text: string, opts: AnalyseOptions = {}): Pressu
     bump("consequence", first[0].toLowerCase());
   }
 
+  /*
+    Shouting. Words in capitals (not acronyms like APR) are shouting on
+    their own; exclamation marks only count when the message is already
+    demanding or shouting — "Well done!" is fine, "Pay now!" is not.
+  */
+  const CAPS = /\b[A-Z]{2,}(?:\s+[A-Z]{2,})*\b/g;
+  let capsRuns = 0;
+  CAPS.lastIndex = 0;
+  let caps: RegExpExecArray | null;
+  while ((caps = CAPS.exec(text)) !== null) {
+    const words = caps[0].split(/\s+/);
+    if (words.every((w) => ACRONYMS.has(w))) continue;
+    if (inLocked(caps.index, caps.index + caps[0].length)) continue;
+    capsRuns += 1;
+    spans.push({
+      start: caps.index,
+      end: caps.index + caps[0].length,
+      kind: "shouting",
+      text: caps[0],
+      why: "Capitals read as shouting. Write it in normal case.",
+    });
+    bump("shouting", caps[0]);
+  }
+  const demanding = capsRuns > 0 || (counts.get("urgency") ?? 0) > 0 || (counts.get("abuse") ?? 0) > 0;
+  if (demanding) {
+    const bangs = (text.match(/!/g) ?? []).length;
+    for (let i = 0; i < Math.min(bangs, 2); i += 1) bump("shouting", "!");
+  }
+
   const readability = analyseReadability(text);
 
   for (const long of readability.longSentences) {
@@ -487,7 +527,9 @@ const SUBSTITUTIONS: Substitution[] = [
   { pattern: /\byou need to\b/gi, replacement: "you can" },
   { pattern: /\byou have to\b/gi, replacement: "you can" },
   // Timing is information. Urgency goes; the date stays (see WHEN below).
-  { pattern: /\s*\b(immediately|right away|as soon as possible|asap)\b/gi, replacement: ` ${WHEN}` },
+  { pattern: /\s*\b(immediately|right away|right now|as soon as possible|asap)\b/gi, replacement: ` ${WHEN}` },
+  { pattern: /\b(?:get|have) (?:this|it|that) (?:done|sorted|paid|cleared)\b/gi, replacement: "sort this out" },
+  { pattern: /\b(?:do it|pay) now\b/gi, replacement: "pay" },
   { pattern: /\bfinal (notice|demand|reminder)\b/gi, replacement: "a note" },
   { pattern: /\b(is|was) delinquent\b/gi, replacement: "is behind" },
   { pattern: /\bdelinquent\b/gi, replacement: "past its date" },
@@ -574,7 +616,16 @@ export function rewriteLocally(text: string, ctx: RewriteContext = {}): RewriteR
     return { text: out, report: analysePressure(out), usedTemplate: true };
   }
 
-  let out = normaliseTextSpeak(text);
+  /*
+    Shouting, or a draft too short to carry the facts, is rewritten from the
+    facts in the picked tone — patching "u need to get this done RIGHT NOW!"
+    word by word can only produce a politer fragment, not a good message.
+  */
+  const shouted = analysePressure(text).findings.some((f) => f.kind === "shouting");
+
+  let out = normaliseTextSpeak(text)
+    // A leading "no" / "look" / "listen" is a retort, not content.
+    .replace(/^\s*(?:no|look|listen|ugh)\b[,!.]?\s+/i, "");
   let droppedConsequence = false;
   for (const { pattern, replacement, consequence } of SUBSTITUTIONS) {
     pattern.lastIndex = 0;
@@ -603,7 +654,9 @@ export function rewriteLocally(text: string, ctx: RewriteContext = {}): RewriteR
   let report = analysePressure(out);
   let usedTemplate = false;
 
-  if (report.score >= 40) {
+  const tooShort = splitWords(out).length < 8;
+
+  if (report.score >= 40 || shouted || tooShort) {
     out = template(ctx, !consequenceElsewhere, tone);
     report = analysePressure(out);
     usedTemplate = true;
@@ -626,6 +679,8 @@ const GREETING = /^(hi|hello|dear|good (morning|afternoon|evening))\b/i;
 /** Dress a substituted message in the picked tone, without adding pressure. */
 function applyTone(text: string, tone: Tone, ctx: RewriteContext): string {
   const name = ctx.firstName ?? "there";
+  // Calm and Warm never shout: exclamation marks become full stops.
+  if (tone !== "celebrate") text = text.replace(/!+/g, ".");
   if (tone === "warm") {
     const opened = GREETING.test(text) ? text : `Hi ${name}, ${lowerFirst(text)}`;
     return /here if you need/i.test(opened) ? opened : `${opened} I'm here if you need anything.`;

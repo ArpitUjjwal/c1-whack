@@ -26,7 +26,6 @@ import { DemoDirector } from "@/components/system/DemoDirector";
 import { JudgeOverlay } from "@/components/system/JudgeOverlay";
 import { Button } from "@/components/ui/Button";
 import { CardTile } from "@/components/ui/CardTile";
-import { ListenFirstContext, SpeechRateContext } from "@/components/ui/ListenButton";
 import { remindersFor } from "@/lib/reminders";
 import { IN_APP_TIPS } from "@/lib/insights-data";
 import { profileConfig, startingDevicePrefs } from "@/lib/demo-data";
@@ -303,9 +302,6 @@ export function CustomerApp() {
   const showTip = (id: string) => !prefs.dismissedTips.includes(id);
   const dismissTip = (id: string) =>
     updatePrefs({ dismissedTips: [...prefs.dismissedTips, id] });
-  const listenTip = showTip(IN_APP_TIPS.listen.id) ? (
-    <Tip text={IN_APP_TIPS.listen.text} onDismiss={() => dismissTip(IN_APP_TIPS.listen.id)} />
-  ) : null;
   const reminderTip =
     !state.customer.contactPreferences.remindDaysBefore && showTip(IN_APP_TIPS.reminders.id) ? (
       <Tip
@@ -315,8 +311,6 @@ export function CustomerApp() {
     ) : null;
 
   return (
-    <SpeechRateContext.Provider value={prefs.speechRate}>
-    <ListenFirstContext.Provider value={prefs.listenFirst}>
     <PhoneFrame reading={prefs}>
       <a
         href="#customer-main"
@@ -437,7 +431,6 @@ export function CustomerApp() {
                   />
 
                   <SafeToSpendCard safe={safe} onDisclosureToggle={noteDisclosure} />
-                  {listenTip}
                   {/* Announces when the one thing changes — e.g. the bank's reply arriving. */}
                   <div aria-live="polite">{theOneThing}</div>
                   <ComingUp reminders={reminders} />
@@ -541,8 +534,6 @@ export function CustomerApp() {
           : ""}
       </p>
     </PhoneFrame>
-    </ListenFirstContext.Provider>
-    </SpeechRateContext.Provider>
   );
 }
 

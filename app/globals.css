@@ -322,7 +322,7 @@ body {
   }
 }
 
-/* ------------------------------------------------ reading and listening -- */
+/* ------------------------------------------------------ reading options -- */
 /*
   Customer-chosen reading options, applied to the phone only (PhoneFrame sets
   the data attributes from device-local preferences). They override the
@@ -382,9 +382,3 @@ body {
   outline-width: 3px !important;
 }
 
-/* Whatever read-aloud is currently speaking. */
-[data-reading-now="true"] {
-  outline: 3px solid var(--color-calm);
-  outline-offset: 3px;
-  border-radius: var(--radius-xl2);
-}

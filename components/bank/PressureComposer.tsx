@@ -48,6 +48,7 @@ const SPAN_STYLE: Record<SpanKind, string> = {
   jargon: "bg-link/20 border-b-2 border-link",
   consequence: "bg-attn/20 border-b-2 border-dashed border-attn",
   abuse: "bg-red/40 border-b-2 border-red-fg",
+  shouting: "bg-attn/30 border-b-2 border-attn",
   allowed: "border-b-2 border-dotted border-pos",
   locked: "",
   "long-sentence": "",
@@ -68,7 +69,7 @@ export function PressureComposer({
 }) {
   const [title, setTitle] = useState("");
   const [draft, setDraft] = useState("");
-  const [tone, setTone] = useState<Tone>("calm");
+  const [pickedTone, setTone] = useState<Tone>("calm");
   const [deep, setDeep] = useState<{ text: string; report: PressureReport } | null>(
     null,
   );
@@ -110,6 +111,8 @@ export function PressureComposer({
     outright, with no "send anyway".
   */
   const goodNews = state.credit.status === "current";
+  /** Celebrate only exists while there's good news; otherwise Calm is in force. */
+  const tone: Tone = pickedTone === "celebrate" && !goodNews ? "calm" : pickedTone;
   /** Only what the customer chose to share goes into a Claude brief. */
   const coachCustomer = useMemo(
     () => ({
@@ -528,10 +531,12 @@ export function PressureComposer({
           ).map((option) => (
             <label
               key={option.id}
-              className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors ${
-                tone === option.id
-                  ? "border-link bg-link-dim text-fg"
-                  : "border-edge bg-glass text-fg-3 hover:text-fg-2"
+              className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors ${
+                option.id === "celebrate" && !goodNews
+                  ? "cursor-not-allowed border-edge text-fg-3 opacity-60"
+                  : tone === option.id
+                    ? "cursor-pointer border-link bg-link-dim text-fg"
+                    : "cursor-pointer border-edge bg-glass text-fg-3 hover:text-fg-2"
               }`}
             >
               <input
@@ -539,6 +544,7 @@ export function PressureComposer({
                 name="nudge-tone"
                 value={option.id}
                 checked={tone === option.id}
+                disabled={option.id === "celebrate" && !goodNews}
                 onChange={() => {
                   setTone(option.id);
                   // A draft that came from a rewrite is re-typed in the new tone.
@@ -550,6 +556,11 @@ export function PressureComposer({
             </label>
           ))}
         </div>
+        {!goodNews ? (
+          <p className="mt-1.5 text-xs text-fg-3">
+            Celebrate unlocks when there&apos;s good news — like the card being paid.
+          </p>
+        ) : null}
       </fieldset>
 
       {/* ------------------------------------------------------ tone check -- */}

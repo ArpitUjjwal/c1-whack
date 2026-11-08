@@ -24,7 +24,6 @@ import type { ContactPreferences } from "./types";
 export type StruggleId =
   | "reading"
   | "seeing"
-  | "listening"
   | "remembering"
   | "overwhelmed"
   | "calls";
@@ -33,7 +32,7 @@ export type StruggleId =
 export type DevicePatch = Partial<
   Pick<
     DevicePrefs,
-    "font" | "textSize" | "wideSpacing" | "tint" | "highContrast" | "listenFirst" | "safeMode"
+    "font" | "textSize" | "wideSpacing" | "tint" | "highContrast" | "safeMode"
   >
 >;
 
@@ -62,13 +61,6 @@ export const STRUGGLES: Struggle[] = [
     effect: "Extra-large, high-contrast text in a font made for low vision.",
     device: { font: "atkinson", textSize: "xlarge", highContrast: true },
     labels: ["Large text"],
-  },
-  {
-    id: "listening",
-    label: "I'd rather listen than read",
-    effect: "A clear “Listen” button on every card, ready to read it aloud.",
-    device: { listenFirst: true },
-    labels: ["Read it to me"],
   },
   {
     id: "remembering",

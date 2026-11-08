@@ -22,7 +22,7 @@ diagnoses:
 | Customer | Needs | Scenario |
 | --- | --- | --- |
 | **Alex** | Finds money tasks hard to start | 14 days away; a £41 card payment slipped. The guided demo. |
-| **Priya** | Reads numbers more easily than paragraphs (dyslexia) | Confused by her statement; phone already set to *Easier reading*. |
+| **Priya** | Reads numbers more easily than paragraphs (dyslexia) | Confused by her statement; phone already set up for easier reading. |
 | **Sam** | Forgets dates; small print is hard to read (memory, low vision) | His card's Direct Debit bounced; six on-time payments earn the grace rule; his balance won't cover rent. |
 
 | Route | Surface |
@@ -49,7 +49,7 @@ Open `http://localhost:3000/customer` and `http://localhost:3000/bank` in two
 
 **First-run setup** (`lib/struggles.ts`) — the first time someone opens the
 app: "What do you find hard? Pick any, or none." Six options in plain words
-(reading long text, seeing small text, rather listen, remembering dates,
+(reading long text, seeing small text, remembering dates,
 starting money tasks / too much on screen, phone calls), each saying what it
 will change. The app transforms live as they tick. What they tick is stored on
 the phone only; sharing the resulting preference labels with support is a
@@ -72,12 +72,9 @@ payment into *needs you*, *pays itself* or *can wait*, projects the balance
 after scheduled bills, and writes a gentle action plan — all from known facts,
 with the assumptions printed. It is read-only: it never pays, extends or waives.
 
-**Reading and listening** — a reading-friendly font (Lexend, or Atkinson
-Hyperlegible for low vision), larger text, wider spacing with no italics, a
-cream or soft-blue background, high contrast, and **read-aloud** on every main
-card (the browser's own speech, British voice, adjustable speed). One-tap
-presets: *Easier reading* and *Bigger and bolder*. Preferences, not
-diagnoses; saved on the phone only.
+**Reading options** — set by the first-run choices: a reading-friendly font
+(Lexend, or Atkinson Hyperlegible for low vision), larger text, wider spacing
+with no italics, a cream background, high contrast. Saved on the phone only.
 
 **Reminders** — "remind me N days before payments I make myself", set in the
 customer's contact rules, shown in the app on the day and marked in the Time
@@ -111,17 +108,20 @@ everyone on that screen. Built only from requests, journey completion and
 pathway outcomes — never from anything on a customer's phone — and no group
 under ten is shown. Illustrative data.
 
-**Grace rule** (`lib/engines/grace.ts`) — three on-time payments in a row earn
+**Grace rule** (`lib/engines/grace.ts`) — six on-time payments in a row (6 of 6) earn
 one forgiven late fee, applied automatically, once a year. It rewards a record
 of paying, never a period of silence. Illustrative policy.
 
 **Tone check** (`lib/engines/sentiment.ts`) — the Calm / Warm / Celebrate
-buttons label how a message looks on the phone; this checks the words match.
-An insult list (catching text-speak like "u" and spellings like "b1tch") makes a
-message unsendable — no "send anyway" — and the AFINN sentiment model (`sentiment`
-package) flags hostile, negative or firm wording against the tone picked.
-Rewrites are written in the picked tone, and changing tone re-types from the
-agent's original words.
+buttons label how a message looks on the phone; this checks the words match,
+and the verdict changes with the tone picked. Insults (including text-speak like
+"u" and spellings like "b1tch") make a message unsendable. Urgency ("right now",
+"get this done") and shouting (capitals, "!" in a demand) are scored by the
+Pressure Index. The AFINN sentiment model (`sentiment` package) adds polarity.
+Calm accepts plain wording; Warm needs a greeting or kind word; Celebrate only
+unlocks with real good news. Rewrites follow the tone — a shouted or very short
+draft is rebuilt from the facts — and changing tone re-types from the agent's
+original words.
 
 **Pressure Index** (`lib/engines/pressure.ts`) — every reply is scored as it is
 typed. Threats go; a real consequence stays, once, calmly, with its date

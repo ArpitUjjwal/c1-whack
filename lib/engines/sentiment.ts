@@ -99,6 +99,11 @@ export interface ToneCheck {
   advice: string;
 }
 
+/** Kind words that make a message read as warm, whatever AFINN scores. */
+const WARM_WORDS =
+  /\b(hope you'?re|here if you need|happy to help|take care|thanks|thank you|no rush|whenever suits|i'?m here)\b/i;
+const GREETING = /^\s*(hi|hello|dear|good (morning|afternoon|evening))\b/i;
+
 const CELEBRATE_WORDS = /\b(well done|congrat\w*|great news|good news|sorted|all done|caught up|nice one)\b/i;
 
 export function hasAbuse(text: string): boolean {
@@ -131,7 +136,8 @@ export function checkTone(
   else if (score <= -2) detected = "negative";
   else if ((CELEBRATE_WORDS.test(normal) && score >= 0) || (score >= 3 && /!/.test(normal)))
     detected = "celebratory";
-  else if (score >= 2) detected = "warm";
+  else if (score >= 2 || WARM_WORDS.test(normal) || (GREETING.test(normal) && score >= 1))
+    detected = "warm";
   else detected = "neutral";
 
   const pickedLabel = picked === "calm" ? "Calm" : picked === "warm" ? "Warm" : "Celebrate";
@@ -183,13 +189,40 @@ export function checkTone(
       advice: `You picked ${pickedLabel}, but this reads as negative. Rewriting will bring it in line.`,
     };
   }
-  if (picked === "celebrate" && !goodNews) {
+  /*
+    Past the hostility checks, the verdict depends on the tone picked — so
+    switching Calm / Warm / Celebrate changes it:
+      Calm      plain is right; warm or celebratory is fine too.
+      Warm      needs a greeting or a kind word; plain reads as cold.
+      Celebrate needs real good news, and to sound like it.
+  */
+  if (picked === "celebrate") {
+    if (!goodNews) {
+      return {
+        detected,
+        score,
+        abusive,
+        verdict: "warn",
+        advice: "Celebrate is for good news, and nothing's been resolved yet. Calm or Warm would fit better.",
+      };
+    }
+    if (detected !== "celebratory") {
+      return {
+        detected,
+        score,
+        abusive,
+        verdict: "warn",
+        advice: "You picked Celebrate, but this doesn't lead with the good news. Rewrite it as good news.",
+      };
+    }
+  }
+  if (picked === "warm" && detected === "neutral") {
     return {
       detected,
       score,
       abusive,
       verdict: "warn",
-      advice: "Celebrate is for good news, and nothing's been resolved yet. Calm or Warm would fit better.",
+      advice: "You picked Warm, but this reads as plain — no greeting or kind word yet. Rewrite it warmly.",
     };
   }
   return { detected, score, abusive, verdict: "match", advice: "" };

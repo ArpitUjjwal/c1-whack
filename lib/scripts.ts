@@ -10,8 +10,6 @@ export interface AgentScript {
   opener: string;
   /** Supporting lines, in the order they should be said. */
   lines: string[];
-  /** Phrasings to stay away from, with the reason. */
-  avoid: { phrase: string; why: string }[];
   /** The single next action the agent should take. */
   nextStep: string;
 }
@@ -49,39 +47,10 @@ export function buildAgentScript(
     ? `“I've refunded the ${fee} late fee, since you've paid. Nothing else changes.”`
     : `“And because you've paid, I can refund the ${fee} late fee. We do that once a year.”`;
 
-  const universalAvoid = [
-    {
-      phrase: "“You need to…” / “You must…”",
-      why: "Pressure produces silence, not payment.",
-    },
-    {
-      phrase: "“Delinquent”, “default”, “collections”",
-      why: "Plain language helps everyone. These words escalate without informing.",
-    },
-    {
-      phrase: "Leading with a fee refund",
-      why: "Goodwill follows action. Offered before paying, it rewards going quiet.",
-    },
-    {
-      phrase: "Stacking options: “You can do A, or B, or C…”",
-      why: "One thing at a time is easier for everyone. Offer one thing, wait, then offer the next.",
-    },
-  ];
 
   /* ------------------------------------- an open request: follow the case */
   const open = [...state.supportCases].reverse().find((c) => c.status !== "resolved");
   if (open && credit.status !== "current") {
-    const caseAvoid = [
-      ...universalAvoid,
-      {
-        phrase: `Asking why, or how ${n} is feeling`,
-        why: "No reason is needed. The request already says what would help.",
-      },
-      {
-        phrase: `Asking ${n} to explain again`,
-        why: `Everything ${n} chose to share is in the request.`,
-      },
-    ];
     const reply = `${CHANNEL_LABEL[open.contact]}${open.keepRepliesShort ? ", kept short" : ""}`;
 
     if (open.status === "review_needed") {
@@ -93,7 +62,6 @@ export function buildAgentScript(
           `“${creditFileLine(payByDate(credit))}”`,
           "“If that doesn't fit, an adviser can look at other options with you.”",
         ],
-        avoid: caseAvoid,
         nextStep: `Pick a pathway in the Rescue Simulator. Reply by ${reply}.`,
       };
     }
@@ -102,7 +70,6 @@ export function buildAgentScript(
         situation: `Request #${open.ref}: guided payment offered. Waiting on ${n} — don't chase.`,
         opener: "“It's in your app now: three small steps. Take it whenever suits you.”",
         lines: ["“If you'd rather do something different, just reply and I'll pass it to an adviser.”"],
-        avoid: caseAvoid,
         nextStep: "Wait. No second message today.",
       };
     }
@@ -113,7 +80,6 @@ export function buildAgentScript(
         }.`,
         opener: "“An adviser has your request. They'll reply in writing — you don't need to do anything.”",
         lines: ["“Nothing about your payment changes until you agree to it.”"],
-        avoid: caseAvoid,
         nextStep: "Adviser: run the eligibility check. Any arrangement needs a second approver.",
       };
     }
@@ -125,7 +91,6 @@ export function buildAgentScript(
           "“There's no extra fee for the extra time.”",
           "“An arrangement doesn't stop a late payment being reported, so paying by the date still matters.”",
         ],
-        avoid: caseAvoid,
         nextStep: `Wait for ${n} to accept. Don't repeat the offer.`,
       };
     }
@@ -142,7 +107,6 @@ export function buildAgentScript(
         refundLine,
         "“Is there anything else you'd like me to take off your plate while I'm here?”",
       ],
-      avoid: universalAvoid,
       nextStep: "Close the contact. No follow-up task needed.",
     };
   }
@@ -157,7 +121,6 @@ export function buildAgentScript(
         refundLine,
         "“One optional thing, and then I'll let you go: I can set up a Direct Debit so the minimum pays itself each month.”",
       ],
-      avoid: universalAvoid,
       nextStep: credit.lateFeeRefunded || credit.lateFeeWaivedByGrace
         ? "Offer the Direct Debit once, then close the contact."
         : `Optional: refund the ${fee} fee now ${n} has paid (once a year). Offer the Direct Debit once, then close.`,
@@ -180,7 +143,6 @@ export function buildAgentScript(
           : "“The new date is in your app. Nothing's due before then.”",
         "“You don't need to do anything today.”",
       ],
-      avoid: universalAvoid,
       nextStep: customer.contactPreferences.remindDaysBefore
         ? `Nothing to set up: ${n}'s reminder is automatic, from their own settings.`
         : "Note the new date on the account. No follow-up needed.",
@@ -196,7 +158,6 @@ export function buildAgentScript(
         "“You don't need to do anything for either of them.”",
         "“If a date ever lands badly, message me in the app and I'll move it.”",
       ],
-      avoid: universalAvoid,
       nextStep: "Note the plan on the account and end the contact.",
     };
   }
@@ -213,13 +174,6 @@ export function buildAgentScript(
         "“Take it whenever. It'll still be there tomorrow.”",
         "“I'll stay quiet unless you want me.”",
       ],
-      avoid: [
-        ...universalAvoid,
-        {
-          phrase: "Repeating the offer",
-          why: `${n} has seen it. A second ask reads as a deadline.`,
-        },
-      ],
       nextStep: `Stop talking and let ${n} decide. Don't send another nudge.`,
     };
   }
@@ -232,7 +186,6 @@ export function buildAgentScript(
         `“${split} now, then two more. Smaller pieces, same result.”`,
         "“Only start it if it feels doable. Otherwise we'll find something else.”",
       ],
-      avoid: universalAvoid,
       nextStep: "Wait. If nothing happens in 48 hours, offer the extension instead.",
     };
   }
@@ -250,13 +203,6 @@ export function buildAgentScript(
         `“Paying it won't change your safe-to-spend number — we'd already set that ${amount} aside.”`,
         "“There's a button in your app that does it in one tap. Want me to wait while you look?”",
       ],
-      avoid: [
-        ...universalAvoid,
-        {
-          phrase: "Mentioning the 14-day gap",
-          why: `Naming the gap makes it a thing to be ashamed of. ${n} knows.`,
-        },
-      ],
       nextStep:
         `Say the one thing, then go quiet and let ${n} act. Don't offer anything yet — the app already makes it one tap.`,
     };
@@ -271,17 +217,6 @@ export function buildAgentScript(
       `“${creditFileLine(payByDate(credit))}”`,
       "“When you open the app, there's one button at the top that handles it. Nothing else to read.”",
       "“If that amount doesn't work this month, tell me and I'll move the date. No explanation needed.”",
-    ],
-    avoid: [
-      ...universalAvoid,
-      {
-        phrase: "“We've tried to reach you several times.”",
-        why: `Unopened emails are evidence the channel failed, not that ${n} did.`,
-      },
-      {
-        phrase: "Any mention of a deadline or final notice",
-        why: "Urgency reliably produces another fortnight of silence.",
-      },
     ],
     nextStep: `${CHANNEL_LABEL[prefs.channel]}, once — ${n}'s chosen channel. Not between ${hourLabel(prefs.quietHours.start)} and ${hourLabel(prefs.quietHours.end)}. Then wait; no second message today.`,
   };

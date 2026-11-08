@@ -143,8 +143,8 @@ export function JudgeOverlay({
                         body="Once, on first open: tick what you find hard and the app changes as you tick. What you tick stays on this phone; sharing the resulting preference labels with support is a separate choice, off by default. Change it all later in Settings & help."
                       />
                       <Mechanism
-                        name="Reading and listening"
-                        body="Reading font, text size, spacing, tint, high contrast and read-aloud — preferences anyone can use, saved on this phone only."
+                        name="Reading options"
+                        body="Reading font, text size, spacing, tint and high contrast — set from the first-run choices, saved on this phone only."
                       />
                       <Mechanism
                         name="Financial Advocate"

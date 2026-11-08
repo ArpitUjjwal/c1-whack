@@ -27,7 +27,7 @@ export interface DevicePrefs {
   /** The welcome-back summary has been read. */
   welcomeBackSeen: boolean;
 
-  /* ---- Reading and listening. Preferences, not diagnoses: anyone can use them. */
+  /* ---- Reading and display. Set from the first-run choices; never shared. ---- */
   /** Typeface for the whole app. Lexend is built for reading ease; Atkinson Hyperlegible for low vision. */
   font: ReadingFont;
   /** Scales the whole phone screen. */
@@ -38,12 +38,8 @@ export interface DevicePrefs {
   tint: Tint;
   /** Darker text and stronger edges throughout. */
   highContrast: boolean;
-  /** Read-aloud speed, as a speech-synthesis rate. */
-  speechRate: number;
   /** In-app tips this customer has closed. They stay closed. */
   dismissedTips: string[];
-  /** Make the "Listen" button prominent on every card. */
-  listenFirst: boolean;
 
   /* ---- First-run setup ("what do you find hard?"). Never shared. ---- */
   /** True once the setup has been completed or skipped. It is never shown again. */
@@ -75,9 +71,7 @@ const DEFAULTS: Omit<DevicePrefs, "epoch"> = {
   wideSpacing: false,
   tint: "none",
   highContrast: false,
-  speechRate: 1,
   dismissedTips: [],
-  listenFirst: false,
   onboarded: false,
   struggles: [],
   sharePreferences: false,
@@ -116,33 +110,6 @@ function subscribe(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }
-
-/** Ready-made combinations, one tap each. Anyone can pick any of them. */
-export const READING_PRESETS: {
-  id: string;
-  label: string;
-  detail: string;
-  patch: Partial<DevicePrefs>;
-}[] = [
-  {
-    id: "dyslexia",
-    label: "Easier reading",
-    detail: "Lexend font, wider spacing, a cream background",
-    patch: { font: "lexend", wideSpacing: true, tint: "cream", textSize: "large" },
-  },
-  {
-    id: "low-vision",
-    label: "Bigger and bolder",
-    detail: "Atkinson Hyperlegible, extra-large text, high contrast",
-    patch: { font: "atkinson", textSize: "xlarge", highContrast: true, tint: "none" },
-  },
-  {
-    id: "standard",
-    label: "Standard",
-    detail: "Back to the default look",
-    patch: { font: "standard", textSize: "standard", wideSpacing: false, tint: "none", highContrast: false },
-  },
-];
 
 /**
  * Read and update this device's preferences for the current demo run.

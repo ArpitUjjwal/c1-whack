@@ -180,7 +180,7 @@ export function InsightsReport({ liveCases }: { liveCases: SupportCase[] }) {
       <p className="mt-4 text-xs text-fg-3">
         Built only from requests customers chose to send, journey completion and
         pathway outcomes. Never from anything on a customer&apos;s phone — Safe
-        Mode, reading settings, read-aloud and the Time Machine stay there — and
+        Mode, reading settings and the Time Machine stay there — and
         never from mental-health classifications. No group under {MIN_GROUP} is
         shown.
       </p>

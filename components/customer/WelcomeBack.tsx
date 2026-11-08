@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
-import { ListenButton } from "@/components/ui/ListenButton";
 import { Panel } from "@/components/ui/Panel";
 import { creditFileLine, payByDate } from "@/lib/compliance";
 import { daysUntil, money, shortDate } from "@/lib/format";
@@ -64,12 +63,6 @@ export function WelcomeBack({
           <h2 id="welcome-heading" className="text-xl font-semibold text-fg">
             Welcome back, {state.customer.firstName}.
           </h2>
-          <ListenButton
-            id="welcome"
-            text={`Welcome back, ${state.customer.firstName}. Here's what changed while you were away. ${changes
-              .slice(0, 3)
-              .join(" ")}`}
-          />
         </div>
         <p className="mt-1 text-[0.9375rem] text-fg-2">
           Here&apos;s what changed while you were away. That&apos;s all of it.

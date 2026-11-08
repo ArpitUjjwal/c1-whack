@@ -99,19 +99,6 @@ export function AgentScriptPanel({
         </AnimatePresence>
       </div>
 
-      <div className="mt-4 rounded-xl border border-red-fg/20 bg-red-dim p-3.5">
-        <h3 className="text-xs font-semibold tracking-[0.12em] text-red-fg uppercase">
-          Don&apos;t say
-        </h3>
-        <ul className="mt-2 space-y-2">
-          {script.avoid.map((item) => (
-            <li key={item.phrase} className="text-sm">
-              <span className="font-medium text-fg">{item.phrase}</span>
-              <span className="block text-fg-3">{item.why}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
 
       <div className="glass-2 mt-4 rounded-xl p-3.5">
         <span className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">

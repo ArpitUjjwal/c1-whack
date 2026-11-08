@@ -2,7 +2,6 @@
 
 import { motion } from "framer-motion";
 import { Disclosure } from "@/components/ui/Disclosure";
-import { ListenButton } from "@/components/ui/ListenButton";
 import { Panel } from "@/components/ui/Panel";
 import { money } from "@/lib/format";
 import type { SafeToSpend } from "@/lib/selectors";
@@ -33,10 +32,6 @@ export function SafeToSpendCard({
         >
           Safe to spend
         </h2>
-        <ListenButton
-          id="safe"
-          text={`You have ${money(safe.available)} safe to spend. That's after everything due in the next ${safe.horizonDays} days.`}
-        />
       </div>
 
       <motion.p

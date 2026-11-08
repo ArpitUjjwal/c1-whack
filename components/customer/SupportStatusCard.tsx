@@ -3,7 +3,6 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Disclosure } from "@/components/ui/Disclosure";
-import { ListenButton } from "@/components/ui/ListenButton";
 import { Panel } from "@/components/ui/Panel";
 import { creditFileLine, payByDate } from "@/lib/compliance";
 import { CHANNEL_LABEL } from "@/lib/contact";
@@ -34,16 +33,6 @@ export function SupportStatusCard({
   const agent = state.agentName;
   const channel = CHANNEL_LABEL[c.contact].toLowerCase();
 
-  const spoken =
-    c.status === "review_needed"
-      ? `Your request has been sent. ${agent} will reply by ${channel}. You don't need to do anything else.`
-      : c.status === "guided_offered"
-        ? `${agent} made paying simpler. The amount is ${money(c.amount)}. It comes from your ${state.current.provider} account, and you'll still have ${money(safeAfterPayment)} safe to spend. There's one button to pay.`
-        : c.status === "specialist_review"
-          ? `An adviser is looking at your request. They'll reply by ${channel}${c.replyBy ? ` by ${longDate(c.replyBy)}` : ""}. You don't need to call or explain again.`
-          : c.status === "arrangement_offered" && state.credit.extendedDueDate
-            ? `An adviser offered you more time. You can pay ${money(c.amount)} on ${longDate(state.credit.extendedDueDate)} instead, with no extra fee.`
-            : "Your request is complete.";
 
   return (
     <Panel bloom="calm" className="p-5" aria-labelledby="case-heading">
@@ -51,7 +40,6 @@ export function SupportStatusCard({
         <p className="text-xs font-semibold tracking-[0.12em] text-calm uppercase">
           Your request #{c.ref}
         </p>
-        <ListenButton id={`case-${c.status}`} text={spoken} />
       </div>
 
       {/*

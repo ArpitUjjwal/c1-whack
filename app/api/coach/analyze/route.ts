@@ -35,6 +35,7 @@ const KINDS = [
   "passive",
   "consequence",
   "abuse",
+  "shouting",
 ] as const;
 
 const AnalysisSchema = z.object({

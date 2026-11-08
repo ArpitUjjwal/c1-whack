@@ -157,9 +157,9 @@ function recommend(barriers: BarrierRow[]): Recommendation[] {
       why: `34% of people drop off at the terms screen (83% → 49%) — the biggest single loss. The simplified version measures ${FOCUS_LOAD_BEFORE} → ${FOCUS_LOAD_AFTER} on cognitive load.`,
     },
     {
-      id: "listen-tip",
-      kind: "in-app tip",
-      title: "Offer “Listen” on payment and statement screens",
+      id: "statement-first",
+      kind: "product",
+      title: "Lead every statement with the amount and the date",
       why: `${share("dont_understand")}% of requests are “I don't understand what I owe”, and understanding a statement is the second-hardest journey.`,
     },
     {
@@ -173,10 +173,6 @@ function recommend(barriers: BarrierRow[]): Recommendation[] {
 
 /** The in-app tips the report recommends, as shown to everyone on that screen. */
 export const IN_APP_TIPS = {
-  listen: {
-    id: "listen-tip",
-    text: "Prefer to listen? Tap “Listen” on any card and it's read to you.",
-  },
   reminders: {
     id: "reminder-tip",
     text: "Reminders can do the remembering for you. Tick “Remembering dates” in Settings & help.",

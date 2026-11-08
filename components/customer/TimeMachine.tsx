@@ -3,7 +3,6 @@
 import { useId, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { Disclosure } from "@/components/ui/Disclosure";
-import { ListenButton } from "@/components/ui/ListenButton";
 import { Panel } from "@/components/ui/Panel";
 import { remindersFor } from "@/lib/reminders";
 import { StatusPill } from "@/components/ui/StatusPill";
@@ -43,9 +42,6 @@ export function TimeMachine({
   const result = useMemo(() => projectBreak(state, days), [state, days]);
   const hasOpenCase = state.supportCases.some((c) => c.status !== "resolved");
   const reminders = useMemo(() => remindersFor(state), [state]);
-  const spoken = `If you take ${result.days} day${result.days === 1 ? "" : "s"} off. ${result.during
-    .map((o) => `${o.label}, ${money(o.amount)}, ${o.bucket === "needs_you" ? "needs you" : "pays itself"}.`)
-    .join(" ")} After those, your balance would be ${money(result.projected)}. ${result.plan}`;
 
   return (
     <Panel bloom="calm" className="p-5" aria-labelledby="tm-heading">
@@ -53,7 +49,6 @@ export function TimeMachine({
         <p className="text-xs font-semibold tracking-[0.12em] text-calm uppercase">
           Financial Time Machine
         </p>
-        <ListenButton id="time-machine" text={spoken} />
       </div>
       <h2 id="tm-heading" className="mt-1.5 text-lg font-semibold text-fg">
         What if you needed some time away from managing money?

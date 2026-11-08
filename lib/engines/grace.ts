@@ -1,7 +1,7 @@
 /**
  * The grace rule: a record of paying on time earns one forgiven late fee.
  *
- * If the last three statements were paid on time, and the rule hasn't been
+ * If the last six statements (6 of 6) were paid on time, and the rule hasn't been
  * used in the past year, the next late fee is waived automatically. It is a
  * policy, not a judgement call — nobody has to ask, explain, or qualify by
  * describing their circumstances — and it rewards a track record of paying,
@@ -14,7 +14,7 @@ import { addDays } from "../format";
 import type { CreditAccount } from "../types";
 
 /** On-time payments in a row needed to earn grace. */
-export const GRACE_STREAK = 3;
+export const GRACE_STREAK = 6;
 
 /** Grace can be used once in this many days. */
 const GRACE_WINDOW_DAYS = 365;
@@ -65,6 +65,6 @@ export function checkGrace(
   return {
     eligible: false,
     streak,
-    reason: `Needs ${GRACE_STREAK} on-time payments in a row; the latest run is ${streak}.`,
+    reason: `Needs ${GRACE_STREAK} of ${GRACE_STREAK} payments on time in a row; the latest run is ${streak}.`,
   };
 }

@@ -158,7 +158,6 @@ experiences rather than conditions, each stating what it will change:
 | --- | --- |
 | Reading long bits of text | Lexend, wider spacing, cream background, larger text |
 | Seeing small text | Atkinson Hyperlegible, extra-large, high contrast |
-| Rather listen than read | A prominent *Listen* button on every card |
 | Remembering dates | Reminders 3 days before payments they make |
 | Starting money tasks, or too much on screen | Opens in Safe Mode |
 | Phone calls | Messages in the app, not calls |
@@ -176,23 +175,14 @@ customer adjusted by hand. One piece of logic (`toggleStruggle`) serves both
 screens, so they cannot disagree. In the demo, Alex starts as a first-time
 user; Priya and Sam are already set up.
 
-### Reading and listening
+### Reading options
 
-Options anyone can turn on in Help, with no reason asked, saved on the phone
-only (`lib/device.ts`, applied through data attributes in `globals.css` so every
-component follows):
-
-| Option | What it does |
-| --- | --- |
-| Font | Lexend (designed for reading ease) or Atkinson Hyperlegible (designed for low vision) |
-| Text size | Large or extra large; the whole screen scales and reflows |
-| Wider spacing | More letter, word and line spacing, and no italics |
-| Background | Cream or soft blue instead of plain |
-| High contrast | Near-black text everywhere, solid surfaces, stronger edges and focus |
-| Read aloud | A *Listen* button on every main card — the browser's own speech, a British voice, at the chosen speed. Works alongside a real screen reader, not instead of one |
-
-Two one-tap presets bundle common combinations: *Easier reading* and *Bigger and
-bolder*. Both pass the live audit (contrast 75/75 at AA; worst 5.76:1 and
+Set by the first-run choices and stored on the phone only (`lib/device.ts`,
+applied through data attributes in `globals.css` so every component follows):
+a Lexend or Atkinson Hyperlegible font, large or extra-large text that scales
+the whole screen, wider spacing with no italics, a cream background, and high
+contrast. The setup's first screen also has *Make the text bigger*. Both
+reading combinations pass the live audit (contrast at AA; worst 5.76:1 and
 6.31:1).
 
 ### Reminders
@@ -207,9 +197,9 @@ script only promises a reminder when one is actually switched on.
 
 The demo carries three customers, switchable from the Care Centre — each
 described by what helps, never by a diagnosis: **Alex** (money tasks are hard
-to start), **Priya** (reads numbers more easily than paragraphs; already on
-*Easier reading*), and **Sam** (forgets dates; small print is hard to read;
-already on *Bigger and bolder*; his card's Direct Debit bounced).
+to start), **Priya** (reads numbers more easily than paragraphs; already set up for easier
+reading), and **Sam** (forgets dates; small print is hard to read; already set
+up for large, high-contrast text; his card's Direct Debit bounced).
 
 ### Safe Mode
 
@@ -353,12 +343,19 @@ phone, so `lib/engines/sentiment.ts` checks that the words match:
 - **A pre-built sentiment model** (AFINN-165, via the `sentiment` package)
   scores polarity, with ordinary banking words ("pay", "fee", "due") zeroed so
   only real hostility counts.
-- **The picked tone is compared with the detected one**, alongside the
-  Pressure Index: "You picked Calm, but this reads as hostile / pressuring / a
-  little firm". Celebrate is flagged when there is no good news yet.
+- **Urgency and shouting are scored.** "Right now", "get this done", "pay
+  now", words in capitals (acronyms like APR excepted) and "!" in a demand all
+  add to the Pressure Index — "no u need to get this done RIGHT NOW!" scores
+  60, *pressuring*.
+- **The verdict depends on the tone picked.** Hostile, pressuring or firm
+  wording is flagged under any tone. Past that: Calm accepts plain wording;
+  Warm needs a greeting or a kind word ("You picked Warm, but this reads as
+  plain"); Celebrate only unlocks once there is good news, and then needs to
+  sound like it.
 - **Rewrites follow the tone.** Calm is plain; Warm adds a greeting and a kind
-  close; Celebrate leads with the good news. Changing tone re-types from the
-  agent's original words, not from the last rewrite.
+  close; Celebrate leads with the good news. A shouted or very short draft is
+  rebuilt from the facts in the chosen tone rather than patched word by word.
+  Changing tone re-types from the agent's original words.
 
 ### Readability
 
@@ -370,15 +367,9 @@ it is standard, cheap, and moves the right way when prose gets worse.
 ### The agent script
 
 `lib/scripts.ts` derives wording from live state, so the script rewrites itself
-mid-conversation when the customer acts. Each variant carries a **"Don't say"**
-column with the reason — most harm in an arrears conversation comes from
-standard phrasing nobody chose:
-
-- "You must…" → pressure is what preceded the 14 quiet days
-- "Delinquent", "default", "collections" → escalates without informing
-- Leading with a fee refund → goodwill offered before paying rewards going quiet
-- Stacking options → Alex processes one step at a time
-- Mentioning the 14-day gap → naming it makes it shameful
+mid-conversation when the customer acts, and it follows the open support
+request. What not to say is handled where the words are written — the Pressure
+Index and tone check score every draft as it is typed.
 
 ### The Care Centre: support that starts before a payment fails
 
@@ -404,11 +395,11 @@ hardest journeys, which response pathways resolve requests, and
 recommendations — two of which are tips shown in the app to everyone on that
 screen. It is built only from requests, journey completion and pathway
 outcomes. Nothing from a customer's phone (Safe Mode, reading settings,
-read-aloud, the Time Machine) feeds it, there are no mental-health
+the Time Machine) feeds it, there are no mental-health
 classifications, and no group under ten is shown. Illustrative data.
 
-The **grace rule** waives a late fee automatically when the last three
-payments were on time, once a year. It needs no request and no explanation,
+The **grace rule** waives a late fee automatically when the last six
+payments were all on time (6 of 6), once a year. It needs no request and no explanation,
 and it rewards a record of paying rather than a period of silence.
 
 The 30-day simulation runs three lanes: the standard cadence, **the design

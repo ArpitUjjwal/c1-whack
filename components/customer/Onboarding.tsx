@@ -3,7 +3,6 @@
 import { useEffect, useState, type RefObject } from "react";
 import { StruggleChecklist } from "./StruggleChecklist";
 import { Button } from "@/components/ui/Button";
-import { ListenButton } from "@/components/ui/ListenButton";
 import { Panel } from "@/components/ui/Panel";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { DEVICE_DEFAULTS, type DevicePrefs } from "@/lib/device";
@@ -137,11 +136,6 @@ export function Onboarding({
             minute, and you can change it any time in Settings.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <ListenButton
-              id="setup-welcome"
-              label="Read this to me"
-              text={`Hi ${name}. Let's set the app up the way that works for you. You'll tick anything you find hard, and the app changes to suit you. No reasons, no diagnosis, and nothing you tick is shared. You can change it any time in Settings.`}
-            />
             <Button
               size="sm"
               variant="outline"

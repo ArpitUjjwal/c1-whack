@@ -4,7 +4,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Disclosure } from "@/components/ui/Disclosure";
-import { ListenButton, useIsReading } from "@/components/ui/ListenButton";
 import { Panel } from "@/components/ui/Panel";
 import { Sheet } from "@/components/ui/Sheet";
 import { CREDIT_FILE_RETENTION, creditFileLine, payByDate } from "@/lib/compliance";
@@ -51,25 +50,19 @@ export function CatchUpWidget({
   const { credit, flags, agentName } = state;
   const amount = credit.minimumDue;
   const splitAmount = Math.round((amount / 3) * 100) / 100;
-  const reading = useIsReading("catchup");
   const bounced = credit.ddReturnedOn !== null;
   const headline = bounced ? "Your Direct Debit didn't go through." : "A payment slipped past.";
-  const spoken = `${headline} Your ${credit.nickname} needs ${money(amount)}. ${creditFileLine(
-    payByDate(credit),
-  )} If you pay it now, you'll still have ${money(safeAfterPayment)} safe to spend.`;
 
   return (
     <Panel
       bloom="calm"
       className="p-5"
       aria-labelledby="catchup-heading"
-      data-reading-now={reading}
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold tracking-[0.12em] text-calm uppercase">
           One thing to look at
         </p>
-        <ListenButton id="catchup" text={spoken} />
       </div>
 
       <h2

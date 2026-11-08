@@ -6,7 +6,8 @@ import { clockTime, relativeTime } from "@/lib/format";
 import type { AppState, TimelineEvent } from "@/lib/types";
 
 const actorStyles = {
-  customer: { dot: "bg-pos", label: "Alex" },
+  // The customer's label is their first name, filled in at render.
+  customer: { dot: "bg-pos", label: "" },
   agent: { dot: "bg-calm", label: "Agent" },
   system: { dot: "bg-fg-3", label: "System" },
 } as const;
@@ -34,12 +35,13 @@ export function ActivityTimeline({
     <Panel className="flex min-h-0 flex-col p-5" aria-labelledby="timeline-heading">
       <div className="flex items-center justify-between gap-3">
         <h2 id="timeline-heading" className="font-semibold text-fg">
-          Behavioural activity
+          Account activity
         </h2>
         <span className="text-xs text-fg-3">{state.timeline.length} events</span>
       </div>
 
-      {/* The signal the rest of the console is built around. */}
+      {/* Only when there has actually been a long gap. */}
+      {state.customer.daysSinceLastOpen >= 7 ? (
       <div className="mt-3 rounded-xl border border-attn/25 bg-attn-dim p-3.5">
         <p className="text-xs font-semibold tracking-[0.12em] text-attn uppercase">
           Long quiet spell
@@ -49,11 +51,12 @@ export function ActivityTimeline({
           {state.customer.openedAppToday ? " — logged in today." : "."}
         </p>
         <p className="mt-1 text-sm text-fg-2">
-          Three reminder emails sent, none opened. The channel failed, not the
+          Reminder emails sent, none opened. The channel failed, not the
           customer. Route to proactive support rather than the standard arrears
           cadence.
         </p>
       </div>
+      ) : null}
 
       <ol
         aria-live="polite"
@@ -79,7 +82,9 @@ export function ActivityTimeline({
                   <p className="mt-0.5 text-sm text-fg-2">{event.detail}</p>
                 ) : null}
                 <p className="mt-1 text-xs text-fg-3">
-                  {actorStyles[event.actor].label}
+                  {event.actor === "customer"
+                    ? state.customer.firstName
+                    : actorStyles[event.actor].label}
                   {hydrated
                     ? ` · ${clockTime(event.at)} · ${relativeTime(event.at, now)}`
                     : ""}

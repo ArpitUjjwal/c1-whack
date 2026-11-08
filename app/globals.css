@@ -312,3 +312,70 @@ body {
     display: none;
   }
 }
+
+/* ------------------------------------------------ reading and listening -- */
+/*
+  Customer-chosen reading options, applied to the phone only (PhoneFrame sets
+  the data attributes from device-local preferences). They override the
+  theme's own tokens inside the device, so every component follows without
+  knowing these options exist. `!important` is used where a user preference
+  has to beat a utility class — the customer's choice wins.
+*/
+[data-font="lexend"] {
+  font-family: var(--font-lexend), ui-sans-serif, system-ui, sans-serif;
+}
+[data-font="atkinson"] {
+  font-family: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Text size scales the whole screen, so layout reflows rather than clipping. */
+[data-size="large"] :is(#customer-main, header, nav, [role="dialog"]) {
+  zoom: 1.15;
+}
+[data-size="xlarge"] :is(#customer-main, header, nav, [role="dialog"]) {
+  zoom: 1.32;
+}
+
+/* Wider spacing and no italics: both commonly reported to help dyslexic readers. */
+[data-spacing="wide"] * {
+  letter-spacing: 0.04em !important;
+  word-spacing: 0.14em !important;
+  line-height: 1.8 !important;
+  font-style: normal !important;
+}
+
+/* Soft tints. Text tokens still clear 4.5:1 on both. */
+[data-tint="cream"] {
+  --color-void: #fbf6e9;
+  --color-deep: #f3ecda;
+  --color-glass: rgba(255, 252, 243, 0.85);
+  --color-glass-2: rgba(255, 252, 243, 0.95);
+  --color-glass-3: #fffcf3;
+}
+[data-tint="blue"] {
+  --color-void: #edf3fb;
+  --color-deep: #e1eaf6;
+  --color-glass: rgba(246, 250, 255, 0.85);
+  --color-glass-2: rgba(246, 250, 255, 0.95);
+  --color-glass-3: #f6faff;
+}
+
+/* High contrast: every text token near-black, solid surfaces, strong edges. */
+[data-contrast="high"] {
+  --color-fg-2: #0d1522;
+  --color-fg-3: #1c2738;
+  --color-edge: rgba(13, 21, 34, 0.55);
+  --color-edge-2: rgba(13, 21, 34, 0.75);
+  --color-glass: #ffffff;
+  --color-glass-2: #ffffff;
+}
+[data-contrast="high"] :focus-visible {
+  outline-width: 3px !important;
+}
+
+/* Whatever read-aloud is currently speaking. */
+[data-reading-now="true"] {
+  outline: 3px solid var(--color-calm);
+  outline-offset: 3px;
+  border-radius: var(--radius-xl2);
+}

@@ -15,6 +15,7 @@ import {
   type SpanKind,
 } from "@/lib/engines/pressure";
 import { LOCKED_SEGMENTS, payByDate } from "@/lib/compliance";
+import { DETECTED_LABEL, checkTone } from "@/lib/engines/sentiment";
 import { FREQUENCY_EVIDENCE, checkContact, ordinal } from "@/lib/contact";
 import { money } from "@/lib/format";
 import type { AppState, Tone } from "@/lib/types";
@@ -46,6 +47,7 @@ const SPAN_STYLE: Record<SpanKind, string> = {
   threat: "bg-red/30 border-b-2 border-red-fg",
   jargon: "bg-link/20 border-b-2 border-link",
   consequence: "bg-attn/20 border-b-2 border-dashed border-attn",
+  abuse: "bg-red/40 border-b-2 border-red-fg",
   allowed: "border-b-2 border-dotted border-pos",
   locked: "",
   "long-sentence": "",
@@ -72,6 +74,13 @@ export function PressureComposer({
   );
   const [claudeAvailable, setClaudeAvailable] = useState(false);
   const [rewriting, setRewriting] = useState(false);
+  /**
+   * A Demo Director "send" that arrives while a rewrite is still running is
+   * held and sent with the rewritten text, rather than hitting the old draft.
+   */
+  const pendingDirectorSend = useRef(false);
+  /** Synchronous twin of `rewriting`: signals can arrive before a re-render. */
+  const rewritingNow = useRef(false);
   const [lastRewrite, setLastRewrite] = useState<{
     from: number;
     to: number;
@@ -95,6 +104,32 @@ export function PressureComposer({
   const fullText = [draft.trim(), ...lockedTexts].filter(Boolean).join(" ");
   const contact = checkContact(state, now, new Date(now).getHours());
 
+  /*
+    The tone buttons label how a message looks on Alex's phone. This checks
+    whether the words actually match the tone picked — and blocks insults
+    outright, with no "send anyway".
+  */
+  const goodNews = state.credit.status === "current";
+  /** Only what the customer chose to share goes into a Claude brief. */
+  const coachCustomer = useMemo(
+    () => ({
+      name: state.customer.name,
+      firstName: state.customer.firstName,
+      preferences: state.customer.cognitiveProfile,
+      note: state.customer.supportNote,
+      minimumDue: state.credit.minimumDue,
+      daysOverdue: state.credit.daysOverdue,
+    }),
+    [state.customer, state.credit.minimumDue, state.credit.daysOverdue],
+  );
+  const [abuseRefused, setAbuseRefused] = useState(false);
+  /**
+   * The agent's own words from before the first rewrite. Changing tone
+   * re-types from this, not from the previous rewrite, so each tone is a
+   * fresh take on what the agent meant rather than a layer on top.
+   */
+  const [rewriteSource, setRewriteSource] = useState<string | null>(null);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const mirrorRef = useRef<HTMLDivElement>(null);
   const { onSignal } = useRealtimeSync();
@@ -103,6 +138,12 @@ export function PressureComposer({
   const localReport = useMemo(
     () => analyseNow(fullText, lockedTexts),
     [fullText, lockedTexts],
+  );
+
+  const toneCheck = useMemo(
+    () =>
+      checkTone(draft, tone, goodNews, localReport.band),
+    [draft, tone, goodNews, localReport.band],
   );
 
   /*
@@ -129,7 +170,7 @@ export function PressureComposer({
 
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
-      const result = await deepAnalyse(fullText, lockedTexts, controller.signal);
+      const result = await deepAnalyse(fullText, lockedTexts, controller.signal, coachCustomer);
       if (result) setDeep({ text: fullText, report: result });
     }, DEEP_DEBOUNCE_MS);
 
@@ -137,7 +178,7 @@ export function PressureComposer({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [fullText, lockedTexts, draft, claudeAvailable]);
+  }, [fullText, lockedTexts, draft, claudeAvailable, coachCustomer]);
 
   /* Keep the highlight layer aligned with the textarea while it scrolls. */
   const syncScroll = useCallback(() => {
@@ -146,15 +187,27 @@ export function PressureComposer({
     }
   }, []);
 
-  const doRewrite = async () => {
+  /**
+   * Rewrite the draft in the picked tone. `toneOverride` lets a tone change
+   * re-type an already-rewritten draft straight away.
+   */
+  const doRewrite = async (toneOverride?: Tone) => {
     if (!draft.trim()) return;
+    rewritingNow.current = true;
     setRewriting(true);
-    const before = report.score;
+    setAbuseRefused(false);
+    const source = toneOverride && rewriteSource ? rewriteSource : draft;
+    if (!rewriteSource || !toneOverride) setRewriteSource(source);
+    const before = lastRewrite && toneOverride ? lastRewrite.from : report.score;
     // Only the free draft is rewritten. Locked wording never leaves this
     // component except verbatim, on send.
-    const result = await rewrite(draft, {
+    const result = await rewrite(source, {
       amount: money(state.credit.minimumDue),
       agentName: state.agentName,
+      firstName: state.customer.firstName,
+      customer: coachCustomer,
+      tone: toneOverride ?? tone,
+      goodNews,
       payBy,
       locked: lockedTexts,
     });
@@ -166,8 +219,24 @@ export function PressureComposer({
       lockedTexts,
     ).score;
     setLastRewrite({ from: before, to: after, source: result.source });
+    rewritingNow.current = false;
     setRewriting(false);
     setConfirmHarmful(false);
+
+    if (pendingDirectorSend.current) {
+      pendingDirectorSend.current = false;
+      const fullRewritten = [result.text.trim(), ...lockedTexts].filter(Boolean).join(" ");
+      // Same guards as a normal send: never an insult, never a harmful score.
+      if (after < 65 && !checkTone(result.text, tone, goodNews).abusive) {
+        onSend(title.trim() || "A note from your support team", fullRewritten, tone);
+        setTitle("");
+        setDraft("");
+        setLockedIds([]);
+        setLastRewrite(null);
+        setRewriteSource(null);
+        setConfirmContact(false);
+      }
+    }
   };
 
   /**
@@ -176,8 +245,17 @@ export function PressureComposer({
    * breach is still on screen, and the harmful-score confirm still applies.
    */
   const send = (fromDirector = false) => {
+    if (fromDirector && rewritingNow.current) {
+      pendingDirectorSend.current = true;
+      return;
+    }
     const t = title.trim() || "A note from your support team";
     if (!draft.trim()) return;
+    // Insults never reach a customer, whoever presses the button.
+    if (toneCheck.abusive) {
+      setAbuseRefused(true);
+      return;
+    }
     if (report.band === "harmful" && !confirmHarmful) {
       setConfirmHarmful(true);
       return;
@@ -191,6 +269,7 @@ export function PressureComposer({
     setDraft("");
     setLockedIds([]);
     setLastRewrite(null);
+    setRewriteSource(null);
     setConfirmHarmful(false);
     setConfirmContact(false);
   };
@@ -231,6 +310,7 @@ export function PressureComposer({
     );
     setLockedIds([]);
     setLastRewrite(null);
+    setRewriteSource(null);
     setConfirmHarmful(false);
     setConfirmContact(false);
     if (focusField) textareaRef.current?.focus();
@@ -248,14 +328,14 @@ export function PressureComposer({
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="composer-heading" className="font-semibold text-fg">
-          Message to Alex
+          Message to {state.customer.firstName}
         </h2>
         <StatusPill tone={claudeAvailable ? "calm" : "neutral"}>
           {claudeAvailable ? "Local + Claude" : "Local engine"}
         </StatusPill>
       </div>
       <p className="mt-1 text-sm text-fg-3">
-        Scored as you type. Nothing reaches Alex without passing through here.
+        Scored as you type. Nothing reaches {state.customer.firstName} without passing through here.
       </p>
 
       {/* ------------------------------------------------------ the meter -- */}
@@ -333,7 +413,11 @@ export function PressureComposer({
           id="nudge-body"
           ref={textareaRef}
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            // Edited by hand: that is now the agent's own wording.
+            setRewriteSource(null);
+          }}
           onScroll={syncScroll}
           rows={4}
           maxLength={400}
@@ -455,7 +539,11 @@ export function PressureComposer({
                 name="nudge-tone"
                 value={option.id}
                 checked={tone === option.id}
-                onChange={() => setTone(option.id)}
+                onChange={() => {
+                  setTone(option.id);
+                  // A draft that came from a rewrite is re-typed in the new tone.
+                  if (lastRewrite) void doRewrite(option.id);
+                }}
                 className="h-4 w-4 accent-[var(--color-link)]"
               />
               {option.label}
@@ -464,6 +552,23 @@ export function PressureComposer({
         </div>
       </fieldset>
 
+      {/* ------------------------------------------------------ tone check -- */}
+      {draft.trim() ? (
+        <div
+          aria-live="polite"
+          className={`mt-2 rounded-xl border px-3 py-2 text-sm ${
+            toneCheck.verdict === "block"
+              ? "border-red/40 bg-red/10 text-red-fg"
+              : toneCheck.verdict === "warn"
+                ? "border-attn/40 bg-attn-dim text-attn"
+                : "border-edge text-fg-2"
+          }`}
+        >
+          <span className="font-semibold">Reads as: {DETECTED_LABEL[toneCheck.detected]}</span>
+          {toneCheck.advice ? <span> — {toneCheck.advice}</span> : <span> — matches the tone you picked.</span>}
+        </div>
+      ) : null}
+
       {/* ------------------------------------------------ frequency guard -- */}
       <div className="mt-4 rounded-xl border border-edge bg-glass p-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -471,7 +576,7 @@ export function PressureComposer({
             {ordinal(contact.nextOrdinal)} message this week
           </StatusPill>
           <span className="text-xs text-fg-3">
-            Alex&apos;s limit: {state.customer.contactPreferences.maxPerWeek} a week
+            {state.customer.firstName}&apos;s limit: {state.customer.contactPreferences.maxPerWeek} a week
           </span>
         </div>
         {contact.breaches.length > 0 ? (
@@ -491,33 +596,48 @@ export function PressureComposer({
         <Button
           variant={report.score >= 20 ? "primary" : "outline"}
           size="md"
-          onClick={doRewrite}
+          onClick={() => doRewrite()}
           disabled={!draft.trim() || rewriting}
         >
-          {rewriting ? "Rewriting…" : "Rewrite it calmly"}
+          {rewriting
+            ? "Rewriting…"
+            : tone === "warm"
+              ? "Rewrite it warmly"
+              : tone === "celebrate" && goodNews
+                ? "Rewrite it as good news"
+                : "Rewrite it calmly"}
         </Button>
         <Button
-          variant={report.band === "harmful" ? "danger" : "pos"}
+          variant={report.band === "harmful" || toneCheck.abusive ? "danger" : "pos"}
           size="md"
           onClick={() => send()}
           disabled={!draft.trim()}
         >
-          {report.band === "harmful"
+          {toneCheck.abusive
+            ? "Can't send — rewrite first"
+            : report.band === "harmful"
             ? confirmHarmful
               ? "Send anyway — I'm sure"
               : "Send anyway"
             : confirmContact
-              ? "Send anyway — break Alex's rule"
-              : "Send to Alex's phone"}
+              ? `Send anyway — break ${state.customer.firstName}'s rule`
+              : `Send to ${state.customer.firstName}'s phone`}
         </Button>
         <Button variant="ghost" size="md" onClick={() => loadExample(true)}>
           Load a bad example
         </Button>
       </div>
 
+      {abuseRefused ? (
+        <p role="alert" className="mt-2 text-sm font-semibold text-red-fg">
+          This contains an insult or swearing, so it can&apos;t be sent. Press
+          &ldquo;Rewrite&rdquo; to start again from the facts.
+        </p>
+      ) : null}
+
       {confirmContact && !confirmHarmful ? (
         <p role="alert" className="mt-2 text-sm font-semibold text-attn">
-          This breaks a rule Alex set on a calm day. Press again to send anyway.
+          This breaks a rule {state.customer.firstName} set on a calm day. Press again to send anyway.
         </p>
       ) : null}
 

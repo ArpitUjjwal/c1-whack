@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { ActivityTimeline } from "./ActivityTimeline";
 import { AgentScriptPanel } from "./AgentScriptPanel";
 import { CognitiveProfileHeader } from "./CognitiveProfileHeader";
-import { FrictionMap } from "./FrictionMap";
+import { InsightsReport } from "./InsightsReport";
 import { LiveAccountPanel } from "./LiveAccountPanel";
 import { PressureComposer } from "./PressureComposer";
 import { SimulationTrack } from "./SimulationTrack";
@@ -71,6 +71,8 @@ export function BankConsole() {
         transport={transport}
         peerCount={customerPeers}
         onReset={reset}
+        profileId={state.profileId}
+        onSwitchProfile={(profile) => dispatch({ type: "RESET_DEMO", profile })}
       />
 
       {/* The bottom padding clears the fixed demo hint bar, which sits at the
@@ -92,11 +94,12 @@ export function BankConsole() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-3">
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
           <LiveAccountPanel state={state} safe={safe} />
           <ActivityTimeline state={state} now={now} hydrated={hydrated} />
-          <FrictionMap />
         </div>
+
+        <InsightsReport liveCases={state.supportCases} />
 
         <SimulationTrack />
 

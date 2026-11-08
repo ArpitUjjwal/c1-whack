@@ -37,22 +37,26 @@ export function buildAgentScript(
   opts: { customerOnline: boolean; customerView: string | null },
 ): AgentScript {
   const { credit, flags, customer } = state;
+  /** The active customer's first name — every line is about them. */
+  const n = customer.firstName;
   const amount = money(credit.minimumDue);
   const split = money(Math.round((credit.minimumDue / 3) * 100) / 100);
   const fee = money(credit.lateFee);
   const prefs = customer.contactPreferences;
-  const refundLine = credit.lateFeeRefunded
+  const refundLine = credit.lateFeeWaivedByGrace
+    ? `“There's no late fee on this one — your last few payments were on time, so it was waived automatically.”`
+    : credit.lateFeeRefunded
     ? `“I've refunded the ${fee} late fee, since you've paid. Nothing else changes.”`
     : `“And because you've paid, I can refund the ${fee} late fee. We do that once a year.”`;
 
   const universalAvoid = [
     {
       phrase: "“You need to…” / “You must…”",
-      why: "Pressure is what preceded the 14 quiet days in the first place.",
+      why: "Pressure produces silence, not payment.",
     },
     {
       phrase: "“Delinquent”, “default”, “collections”",
-      why: "Alex asked for plain language. These words escalate without informing.",
+      why: "Plain language helps everyone. These words escalate without informing.",
     },
     {
       phrase: "Leading with a fee refund",
@@ -60,7 +64,7 @@ export function buildAgentScript(
     },
     {
       phrase: "Stacking options: “You can do A, or B, or C…”",
-      why: "Alex prefers one step at a time. Offer one thing, wait, then offer the next.",
+      why: "One thing at a time is easier for everyone. Offer one thing, wait, then offer the next.",
     },
   ];
 
@@ -70,12 +74,12 @@ export function buildAgentScript(
     const caseAvoid = [
       ...universalAvoid,
       {
-        phrase: "Asking why, or how Alex is feeling",
+        phrase: `Asking why, or how ${n} is feeling`,
         why: "No reason is needed. The request already says what would help.",
       },
       {
-        phrase: "Asking Alex to explain again",
-        why: "Everything Alex chose to share is in the request.",
+        phrase: `Asking ${n} to explain again`,
+        why: `Everything ${n} chose to share is in the request.`,
       },
     ];
     const reply = `${CHANNEL_LABEL[open.contact]}${open.keepRepliesShort ? ", kept short" : ""}`;
@@ -83,7 +87,7 @@ export function buildAgentScript(
     if (open.status === "review_needed") {
       return {
         situation: `Request #${open.ref}: ${open.summary}`,
-        opener: "“Thanks for sending this, Alex. You don't need to explain anything else.”",
+        opener: `“Thanks for sending this, ${n}. You don't need to explain anything else.”`,
         lines: [
           `“It's the ${amount} on your card. I can make paying it simpler — three small steps in the app.”`,
           `“${creditFileLine(payByDate(credit))}”`,
@@ -95,7 +99,7 @@ export function buildAgentScript(
     }
     if (open.status === "guided_offered") {
       return {
-        situation: `Request #${open.ref}: guided payment offered. Waiting on Alex — don't chase.`,
+        situation: `Request #${open.ref}: guided payment offered. Waiting on ${n} — don't chase.`,
         opener: "“It's in your app now: three small steps. Take it whenever suits you.”",
         lines: ["“If you'd rather do something different, just reply and I'll pass it to an adviser.”"],
         avoid: caseAvoid,
@@ -115,14 +119,14 @@ export function buildAgentScript(
     }
     if (open.status === "arrangement_offered") {
       return {
-        situation: `Request #${open.ref}: arrangement approved and offered. Waiting on Alex.`,
+        situation: `Request #${open.ref}: arrangement approved and offered. Waiting on ${n}.`,
         opener: "“An adviser has offered you a new date. It's in your app.”",
         lines: [
           "“There's no extra fee for the extra time.”",
           "“An arrangement doesn't stop a late payment being reported, so paying by the date still matters.”",
         ],
         avoid: caseAvoid,
-        nextStep: "Wait for Alex to accept. Don't repeat the offer.",
+        nextStep: `Wait for ${n} to accept. Don't repeat the offer.`,
       };
     }
   }
@@ -131,7 +135,7 @@ export function buildAgentScript(
   if (credit.status === "current" && flags.autopayEnabled) {
     return {
       situation: "Paid and automated. Nothing outstanding.",
-      opener: `“All done, Alex. The card's up to date, and from now on the minimum goes out by itself.”`,
+      opener: `“All done, ${n}. The card's up to date, and from now on the minimum goes out by itself.”`,
       lines: [
         "“You don't have to remember the date any more. If you ever want it off, it's one tap.”",
         "“It was paid well before anything is reported to the credit reference agencies.”",
@@ -145,7 +149,7 @@ export function buildAgentScript(
 
   if (credit.status === "current") {
     return {
-      situation: "Alex just cleared the past-due amount, unassisted.",
+      situation: `${n} just cleared the past-due amount, unassisted.`,
       opener: `“That's it — it's done. The card's up to date.”`,
       lines: [
         "“It's paid well before anything is reported to the credit reference agencies.”",
@@ -154,9 +158,9 @@ export function buildAgentScript(
         "“One optional thing, and then I'll let you go: I can set up a Direct Debit so the minimum pays itself each month.”",
       ],
       avoid: universalAvoid,
-      nextStep: credit.lateFeeRefunded
+      nextStep: credit.lateFeeRefunded || credit.lateFeeWaivedByGrace
         ? "Offer the Direct Debit once, then close the contact."
-        : `Optional: refund the ${fee} fee now Alex has paid (once a year). Offer the Direct Debit once, then close.`,
+        : `Optional: refund the ${fee} fee now ${n} has paid (once a year). Offer the Direct Debit once, then close.`,
     };
   }
 
@@ -167,11 +171,19 @@ export function buildAgentScript(
       opener: `“You're set. Nothing's due until ${longDate(credit.dueDate)}.”`,
       lines: [
         "“There's no extra fee for the extra time.”",
-        "“You'll get one gentle reminder two days before. Nothing in between.”",
+        // Only promise a reminder if Alex has reminders switched on — the
+        // script must never promise anything the product won't do.
+        customer.contactPreferences.remindDaysBefore
+          ? `“You'll get a reminder in the app ${customer.contactPreferences.remindDaysBefore} day${
+              customer.contactPreferences.remindDaysBefore === 1 ? "" : "s"
+            } before. Nothing in between.”`
+          : "“The new date is in your app. Nothing's due before then.”",
         "“You don't need to do anything today.”",
       ],
       avoid: universalAvoid,
-      nextStep: `Confirm the reminder is set for two days before ${longDate(credit.dueDate)}.`,
+      nextStep: customer.contactPreferences.remindDaysBefore
+        ? `Nothing to set up: ${n}'s reminder is automatic, from their own settings.`
+        : "Note the new date on the account. No follow-up needed.",
     };
   }
 
@@ -192,7 +204,7 @@ export function buildAgentScript(
   /* --------------------------------------- offers out, waiting on a response */
   if (flags.extensionOffered && !flags.extensionAccepted) {
     return {
-      situation: "Extension offered. Waiting on Alex — do not chase.",
+      situation: `Extension offered. Waiting on ${n} — do not chase.`,
       opener: `“I've put the option in your app. There's no rush on it.”`,
       lines: [
         `“It moves the date to ${
@@ -205,16 +217,16 @@ export function buildAgentScript(
         ...universalAvoid,
         {
           phrase: "Repeating the offer",
-          why: "Alex has seen it. A second ask reads as a deadline.",
+          why: `${n} has seen it. A second ask reads as a deadline.`,
         },
       ],
-      nextStep: "Stop talking and let Alex decide. Don't send another nudge.",
+      nextStep: `Stop talking and let ${n} decide. Don't send another nudge.`,
     };
   }
 
   if (flags.splitPlanOffered && !flags.splitPlanAccepted) {
     return {
-      situation: "Split plan offered. Waiting on Alex.",
+      situation: `Split plan offered. Waiting on ${n}.`,
       opener: `“I've split it into three in your app — ${split} to start.”`,
       lines: [
         `“${split} now, then two more. Smaller pieces, same result.”`,
@@ -228,10 +240,10 @@ export function buildAgentScript(
   /* ----------------------------------- live in the app, past due, no offer yet */
   if (opts.customerOnline) {
     return {
-      situation: `Past due ${credit.daysOverdue} days. Alex is in the app right now${
+      situation: `Past due ${credit.daysOverdue} days. ${n} is in the app right now${
         opts.customerView ? ` — on ${opts.customerView}` : ""
       }.`,
-      opener: `“Hi Alex, it's ${state.agentName} at Capital One. You're not in any trouble — I just wanted to make one thing easy.”`,
+      opener: `“Hi ${n}, it's ${state.agentName} at Capital One. You're not in any trouble — I just wanted to make one thing easy.”`,
       lines: [
         `“There's ${amount} on the ${credit.nickname} that slipped past its date. That's the whole of it.”`,
         `“${creditFileLine(payByDate(credit))}”`,
@@ -242,18 +254,18 @@ export function buildAgentScript(
         ...universalAvoid,
         {
           phrase: "Mentioning the 14-day gap",
-          why: "Naming the gap makes it a thing to be ashamed of. Alex knows.",
+          why: `Naming the gap makes it a thing to be ashamed of. ${n} knows.`,
         },
       ],
       nextStep:
-        "Say the one thing, then go quiet and let Alex act. Don't offer anything yet — the app already makes it one tap.",
+        `Say the one thing, then go quiet and let ${n} act. Don't offer anything yet — the app already makes it one tap.`,
     };
   }
 
   /* --------------------------------------------- offline: proactive, one touch */
   return {
     situation: `Past due ${credit.daysOverdue} days. ${customer.daysSinceLastOpen} days without opening the app.`,
-    opener: `“Hi Alex — ${state.agentName} at Capital One. Nothing's wrong, and you don't need to call me back.”`,
+    opener: `“Hi ${n} — ${state.agentName} at Capital One. Nothing's wrong, and you don't need to call me back.”`,
     lines: [
       `“There's ${amount} sitting on your card. That's all it is.”`,
       `“${creditFileLine(payByDate(credit))}”`,
@@ -264,13 +276,13 @@ export function buildAgentScript(
       ...universalAvoid,
       {
         phrase: "“We've tried to reach you several times.”",
-        why: "Three unopened emails is evidence the channel failed, not that Alex did.",
+        why: `Unopened emails are evidence the channel failed, not that ${n} did.`,
       },
       {
         phrase: "Any mention of a deadline or final notice",
-        why: "Alex told us money tasks are hard to start. Urgency reliably produces another 14 days of silence.",
+        why: "Urgency reliably produces another fortnight of silence.",
       },
     ],
-    nextStep: `${CHANNEL_LABEL[prefs.channel]}, once — Alex's chosen channel. Not between ${hourLabel(prefs.quietHours.start)} and ${hourLabel(prefs.quietHours.end)}. Then wait; no second message today.`,
+    nextStep: `${CHANNEL_LABEL[prefs.channel]}, once — ${n}'s chosen channel. Not between ${hourLabel(prefs.quietHours.start)} and ${hourLabel(prefs.quietHours.end)}. Then wait; no second message today.`,
   };
 }

@@ -4,10 +4,12 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { LiveDot } from "@/components/ui/LiveDot";
 import { Panel } from "@/components/ui/Panel";
-import { StatusPill } from "@/components/ui/StatusPill";
 import { CREDIT_FILE_GENERAL } from "@/lib/compliance";
 import type { Action, AppState } from "@/lib/types";
+import { ReadingSettings } from "./ReadingSettings";
+import { StrugglesSettings } from "./StrugglesSettings";
 import { TrustPanel } from "./TrustPanel";
+import type { DevicePrefs } from "@/lib/device";
 
 /**
  * Where the customer's accessibility needs are declared — and the reason the
@@ -21,6 +23,8 @@ export function HelpPanel({
   dispatch,
   adaptiveEnabled,
   onToggleAdaptive,
+  prefs,
+  onChangePrefs,
 }: {
   state: AppState;
   agentOnline: boolean;
@@ -28,6 +32,8 @@ export function HelpPanel({
   dispatch: (action: Action) => void;
   adaptiveEnabled: boolean;
   onToggleAdaptive: (on: boolean) => void;
+  prefs: DevicePrefs;
+  onChangePrefs: (patch: Partial<Omit<DevicePrefs, "epoch">>) => void;
 }) {
   const [draft, setDraft] = useState("");
   const [sent, setSent] = useState(false);
@@ -44,25 +50,16 @@ export function HelpPanel({
   return (
     <section aria-labelledby="help-heading" className="space-y-3">
       <h2 id="help-heading" className="px-1 text-lg font-semibold text-fg">
-        Help, your way
+        Settings &amp; help
       </h2>
 
-      <Panel as="article" className="p-5">
-        <h3 className="font-semibold text-fg">How you like to be helped</h3>
-        <p className="mt-1 text-sm text-fg-3">
-          Your preferences — no reason needed. Everyone who helps you can see them.
-        </p>
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {state.customer.cognitiveProfile.map((need) => (
-            <li key={need}>
-              <StatusPill tone="calm">{need}</StatusPill>
-            </li>
-          ))}
-        </ul>
-        <blockquote className="mt-4 rounded-xl border-l-2 border-calm bg-calm-dim p-3.5 text-[0.9375rem] text-fg-2 italic">
-          &ldquo;{state.customer.supportNote}&rdquo;
-        </blockquote>
-      </Panel>
+      <h3 className="px-1 pt-1 text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
+        Accessibility settings
+      </h3>
+
+      <StrugglesSettings state={state} prefs={prefs} onPrefs={onChangePrefs} dispatch={dispatch} />
+
+      <ReadingSettings prefs={prefs} onChange={onChangePrefs} />
 
       <TrustPanel
         state={state}

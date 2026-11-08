@@ -49,7 +49,7 @@ export function AgentScriptPanel({
           <span className="breathe" aria-hidden="true">
             ●
           </span>
-          Follows Alex&apos;s state
+          Follows the customer&apos;s state
         </StatusPill>
       </div>
 

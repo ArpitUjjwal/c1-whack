@@ -123,7 +123,13 @@ export function AccountsPanel({
               <DetailRow label="Interest rate (APR)" value={`${credit.apr}%`} />
               <DetailRow
                 label="Late fee"
-                value={credit.lateFeeRefunded ? `${money(credit.lateFee)} — refunded` : money(credit.lateFee)}
+                value={
+                  credit.lateFeeWaivedByGrace
+                    ? `${money(credit.lateFee)} — waived, thanks to your on-time payments`
+                    : credit.lateFeeRefunded
+                      ? `${money(credit.lateFee)} — refunded`
+                      : money(credit.lateFee)
+                }
               />
             </dl>
             <p className="mt-3 text-xs text-fg-3">

@@ -2,9 +2,10 @@
 
 import { motion } from "framer-motion";
 import { Meter } from "@/components/ui/Meter";
+import { checkGrace, onTimeStreak } from "@/lib/engines/grace";
 import { Panel } from "@/components/ui/Panel";
 import { StatusPill } from "@/components/ui/StatusPill";
-import { money, shortDate } from "@/lib/format";
+import { addDays, money, shortDate } from "@/lib/format";
 import { selectCreditUtilisation, type SafeToSpend } from "@/lib/selectors";
 import type { AppState } from "@/lib/types";
 
@@ -52,12 +53,12 @@ export function LiveAccountPanel({
         </StatusPill>
       </div>
       <p className="mt-1 text-sm text-fg-3">
-        The same numbers on Alex&apos;s phone right now.
+        The same numbers on {state.customer.firstName}&apos;s phone right now.
       </p>
 
       <div className="glass-2 mt-4 rounded-xl p-4">
         <p className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
-          Safe to spend — what Alex sees
+          Safe to spend — what {state.customer.firstName} sees
         </p>
         <motion.p
           key={safe.available}
@@ -83,7 +84,7 @@ export function LiveAccountPanel({
         <div>
           <Metric
             label={credit.nickname}
-            sub="Credit ••••8842"
+            sub={`Credit ••••${credit.accountNumber.slice(-4)}`}
             value={money(credit.balance)}
             pill={<StatusPill tone={status.tone}>{status.label}</StatusPill>}
           />
@@ -106,12 +107,40 @@ export function LiveAccountPanel({
         <Metric
           label="Late fee"
           sub={
-            credit.lateFeeRefunded
-              ? "Refunded after Alex paid (once a year)"
-              : "Charged. Refundable once a year, after payment"
+            credit.lateFeeWaivedByGrace
+              ? `Waived by the grace rule: last ${onTimeStreak(credit)} payments on time`
+              : credit.lateFeeRefunded
+                ? `Refunded after ${state.customer.firstName} paid (once a year)`
+                : "Charged. Refundable once a year, after payment"
           }
-          value={credit.lateFeeRefunded ? "Refunded" : money(credit.lateFee)}
+          value={
+            credit.lateFeeWaivedByGrace
+              ? "Waived"
+              : credit.lateFeeRefunded
+                ? "Refunded"
+                : money(credit.lateFee)
+          }
         />
+        <div>
+          <dt className="font-medium text-fg">On-time record</dt>
+          <dd className="mt-1 flex flex-wrap gap-1.5">
+            {credit.paymentHistory.map((h) => (
+              <span
+                key={h.month}
+                className={`rounded-md px-1.5 py-0.5 text-xs font-medium ${
+                  h.onTime ? "bg-pos-dim text-pos" : "bg-attn-dim text-attn"
+                }`}
+              >
+                {h.month} {h.onTime ? "✓" : "late"}
+              </span>
+            ))}
+          </dd>
+          <dd className="mt-1 text-xs text-fg-3">
+            {credit.lateFeeWaivedByGrace && credit.graceUsedOn
+              ? `Grace used on this payment. Available again from ${shortDate(addDays(credit.graceUsedOn, 365))}.`
+              : checkGrace(credit, credit.dueDate).reason}
+          </dd>
+        </div>
       </dl>
 
       <div className="mt-4 flex flex-wrap gap-2 border-t border-edge pt-3">

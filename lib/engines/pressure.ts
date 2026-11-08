@@ -23,6 +23,8 @@
  */
 
 import { creditFileLine } from "../compliance";
+import { ABUSE, hasAbuse, normaliseTextSpeak } from "./sentiment";
+import type { Tone } from "../types";
 import {
   LONG_SENTENCE_WORDS,
   analyseReadability,
@@ -40,7 +42,8 @@ export type FindingKind =
   | "grade"
   | "multiple-asks"
   | "passive"
-  | "consequence";
+  | "consequence"
+  | "abuse";
 
 /**
  * Span kinds beyond the scored findings: `allowed` marks the one dated
@@ -89,10 +92,10 @@ interface LexEntry {
 
 /** Deadline and compulsion language. Reliably produces avoidance. */
 const URGENCY: LexEntry[] = [
-  { pattern: /\byou must\b/gi, why: "Compulsion. Offer the action instead of demanding it." },
+  { pattern: /\b(?:you|u|ya) must\b/gi, why: "Compulsion. Offer the action instead of demanding it." },
   { pattern: /\bmust be\b/gi, why: "Compulsion. Say what happens, not what is compelled." },
-  { pattern: /\byou need to\b/gi, why: "Reads as an order. 'You can' leaves the choice with Alex." },
-  { pattern: /\byou have to\b/gi, why: "Reads as an order." },
+  { pattern: /\b(?:you|u|ya) need to\b/gi, why: "Reads as an order. 'You can' leaves the choice with the customer." },
+  { pattern: /\b(?:you|u|ya) have to\b/gi, why: "Reads as an order." },
   { pattern: /\brequired to\b/gi, why: "Procedural compulsion." },
   { pattern: /\bimmediately\b/gi, why: "Manufactured urgency. There is no same-day deadline here." },
   { pattern: /\bright away\b/gi, why: "Manufactured urgency." },
@@ -109,11 +112,11 @@ const URGENCY: LexEntry[] = [
 
 /** Blame directed at the customer. The strongest predictor of disengagement. */
 const SHAME: LexEntry[] = [
-  { pattern: /\byou (failed|neglected|ignored)\b/gi, why: "Direct blame. Alex already knows." },
-  { pattern: /\byou (did not|didn't|have not|haven't)\b/gi, why: "Frames the gap as a personal failing." },
-  { pattern: /\byou were supposed to\b/gi, why: "Scolding." },
-  { pattern: /\byour responsibility\b/gi, why: "Assigns fault rather than offering help." },
-  { pattern: /\bwe('ve| have) (tried|attempted|made)\b/gi, why: "Three unopened emails means the channel failed, not Alex." },
+  { pattern: /\b(?:you|u|ya) (failed|neglected|ignored)\b/gi, why: "Direct blame. They already know." },
+  { pattern: /\b(?:you|u|ya) (did not|didn't|have not|haven't)\b/gi, why: "Frames the gap as a personal failing." },
+  { pattern: /\b(?:you|u|ya) were supposed to\b/gi, why: "Scolding." },
+  { pattern: /\b(?:your|ur) responsibility\b/gi, why: "Assigns fault rather than offering help." },
+  { pattern: /\bwe('ve| have) (tried|attempted|made)\b/gi, why: "Unopened emails mean the channel failed, not the customer." },
   { pattern: /\b(repeatedly|numerous|several) (attempts|times|notices)\b/gi, why: "Counting past contacts is a reprimand." },
   { pattern: /\bonce again\b/gi, why: "Implies a pattern of fault." },
   { pattern: /\bstill (has not|hasn't|have not|haven't)\b/gi, why: "Emphasises the lapse." },
@@ -181,6 +184,8 @@ const WEIGHTS: Record<FindingKind, { each: number; cap: number; label: string }>
   "multiple-asks": { each: 10, cap: 10, label: "More than one decision in one message" },
   passive: { each: 5, cap: 10, label: "Passive voice hiding who does what" },
   consequence: { each: 10, cap: 30, label: "Consequence with no date, or said twice" },
+  // One insult is enough to make a message unsendable.
+  abuse: { each: 70, cap: 100, label: "Insults, contempt or swearing" },
 };
 
 function weightOf(kind: SpanKind): number {
@@ -188,6 +193,7 @@ function weightOf(kind: SpanKind): number {
 }
 
 const LEXICONS: { kind: FindingKind; entries: LexEntry[] }[] = [
+  { kind: "abuse", entries: ABUSE },
   { kind: "urgency", entries: URGENCY },
   { kind: "shame", entries: SHAME },
   { kind: "threat", entries: THREAT },
@@ -208,7 +214,7 @@ export const BAND_COPY: Record<
   calm: {
     label: "Calm",
     tone: "pos",
-    advice: "Safe to send. This reads the way Alex asked to be spoken to.",
+    advice: "Safe to send. This reads the way the customer asked to be spoken to.",
   },
   firm: {
     label: "A little firm",
@@ -409,7 +415,7 @@ function describe(
 ): string {
   switch (kind) {
     case "long-sentence":
-      return `${count} sentence${count === 1 ? "" : "s"} over ${LONG_SENTENCE_WORDS} words. Alex reads one idea at a time.`;
+      return `${count} sentence${count === 1 ? "" : "s"} over ${LONG_SENTENCE_WORDS} words. Plain language is one idea at a time.`;
     case "grade":
       return `Reads at grade ${readability.grade}. The target is 8 or below.`;
     case "multiple-asks":
@@ -502,6 +508,24 @@ const SUBSTITUTIONS: Substitution[] = [
 export interface RewriteContext {
   amount?: string;
   agentName?: string;
+  /** Customer's first name, for a Warm greeting. */
+  firstName?: string;
+  /**
+   * What the customer has chosen to share, for the Claude brief. Only shared
+   * labels and note — never anything from their phone.
+   */
+  customer?: {
+    name: string;
+    firstName: string;
+    preferences: string[];
+    note: string;
+    minimumDue: number;
+    daysOverdue: number;
+  };
+  /** The tone the agent picked. The rewrite is written in it. */
+  tone?: Tone;
+  /** Whether there is anything to celebrate (e.g. the account is up to date). */
+  goodNews?: boolean;
   /** Human date by which paying keeps the missed payment off the credit file. */
   payBy?: string;
   /**
@@ -540,7 +564,17 @@ function lockedStatesConsequence(locked: string[] = []): boolean {
  * present.
  */
 export function rewriteLocally(text: string, ctx: RewriteContext = {}): RewriteResult {
-  let out = text;
+  const tone = effectiveTone(ctx);
+  const consequenceElsewhereEarly = lockedStatesConsequence(ctx.locked ?? []);
+
+  // An insult poisons the whole message: start again from the facts, in the
+  // picked tone, rather than trying to salvage the sentence around it.
+  if (hasAbuse(normaliseTextSpeak(text))) {
+    const out = template(ctx, !consequenceElsewhereEarly, tone);
+    return { text: out, report: analysePressure(out), usedTemplate: true };
+  }
+
+  let out = normaliseTextSpeak(text);
   let droppedConsequence = false;
   for (const { pattern, replacement, consequence } of SUBSTITUTIONS) {
     pattern.lastIndex = 0;
@@ -570,18 +604,62 @@ export function rewriteLocally(text: string, ctx: RewriteContext = {}): RewriteR
   let usedTemplate = false;
 
   if (report.score >= 40) {
-    out = template(ctx, !consequenceElsewhere);
+    out = template(ctx, !consequenceElsewhere, tone);
     report = analysePressure(out);
     usedTemplate = true;
+  } else {
+    out = applyTone(out, tone, ctx);
+    report = analysePressure(out);
   }
 
   return { text: out, report, usedTemplate };
 }
 
-function template(ctx: RewriteContext, includeConsequence: boolean): string {
+/** Celebrate only when there is good news; otherwise Warm is the honest choice. */
+function effectiveTone(ctx: RewriteContext): Tone {
+  const tone = ctx.tone ?? "calm";
+  return tone === "celebrate" && !ctx.goodNews ? "warm" : tone;
+}
+
+const GREETING = /^(hi|hello|dear|good (morning|afternoon|evening))\b/i;
+
+/** Dress a substituted message in the picked tone, without adding pressure. */
+function applyTone(text: string, tone: Tone, ctx: RewriteContext): string {
+  const name = ctx.firstName ?? "there";
+  if (tone === "warm") {
+    const opened = GREETING.test(text) ? text : `Hi ${name}, ${lowerFirst(text)}`;
+    return /here if you need/i.test(opened) ? opened : `${opened} I'm here if you need anything.`;
+  }
+  if (tone === "celebrate") {
+    return /good news|well done/i.test(text) ? text : `Good news, ${name}! ${text}`;
+  }
+  return text;
+}
+
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
+function template(ctx: RewriteContext, includeConsequence: boolean, tone: Tone = "calm"): string {
   const amount = ctx.amount ?? "the minimum";
+  const name = ctx.firstName ?? "there";
+  const agent = ctx.agentName ?? "your support team";
+  if (tone === "celebrate") {
+    return `Good news, ${name}! Your card is up to date and there's nothing else to do. Thanks for sorting it.`;
+  }
+  if (tone === "warm") {
+    return [
+      `Hi ${name}, it's ${agent} at Capital One. I hope you're doing OK.`,
+      `There's ${amount} on your card that's past its date.`,
+      includeConsequence && ctx.payBy ? creditFileLine(ctx.payBy) : "",
+      `There's one button at the top of the app for it.`,
+      `I'm here if you'd like a hand with anything.`,
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
   return [
-    `Hi Alex — it's ${ctx.agentName ?? "your support team"} at Capital One. You don't need to reply.`,
+    `Hi ${ctx.firstName ?? "there"} — it's ${ctx.agentName ?? "your support team"} at Capital One. You don't need to reply.`,
     `There's ${amount} on your card that's past its date.`,
     includeConsequence && ctx.payBy ? creditFileLine(ctx.payBy) : "",
     `There's one button at the top of the app for it.`,
@@ -596,7 +674,7 @@ function tidy(text: string): string {
   return text
     .replace(/\s{2,}/g, " ")
     .replace(/\s+([.,!?;:])/g, "$1")
-    .replace(/([.!?])\s*([a-z])/g, (_m, p: string, c: string) => `${p} ${c.toUpperCase()}`)
+    .replace(/(?<!\b[A-Z])([.!?])\s*([a-z])/g, (_m, p: string, c: string) => `${p} ${c.toUpperCase()}`)
     .replace(/^\s*([a-z])/, (_m, c: string) => c.toUpperCase())
     .trim();
 }
@@ -610,5 +688,5 @@ function splitLongSentences(text: string): string {
       return split.replace(/;\s+/g, ". ");
     })
     .join(" ")
-    .replace(/([.!?])\s*([a-z])/g, (_m, p: string, c: string) => `${p} ${c.toUpperCase()}`);
+    .replace(/(?<!\b[A-Z])([.!?])\s*([a-z])/g, (_m, p: string, c: string) => `${p} ${c.toUpperCase()}`);
 }

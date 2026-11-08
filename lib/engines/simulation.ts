@@ -89,17 +89,17 @@ const STANDARD_POLICY: Step[] = [
   { day: 10, label: "Outbound collections call", detail: "No answer. Logged as an attempt.", kind: "pressure", multiply: PRESSURE_MULTIPLIER },
   { day: 15, label: "Second call, then a text", detail: "Contact volume rising. Nothing new is said.", kind: "pressure", multiply: PRESSURE_MULTIPLIER },
   { day: 21, label: "Final notice issued", detail: "Escalation language. Mentions credit reporting.", kind: "pressure", multiply: PRESSURE_MULTIPLIER },
-  { day: 30, label: "Reported to credit reference agencies", detail: `Over 30 days in arrears. The missed payment stays on Alex's credit file for ${CREDIT_FILE_RETENTION}.`, kind: "harm", multiply: PRESSURE_MULTIPLIER, bureau: true },
+  { day: 30, label: "Reported to credit reference agencies", detail: `Over 30 days in arrears. The missed payment stays on the customer's credit file for ${CREDIT_FILE_RETENTION}.`, kind: "harm", multiply: PRESSURE_MULTIPLIER, bureau: true },
 ];
 
 /** Remove the pressure, then remove the effort. Nothing given away. */
 const DESIGN_STEPS: Step[] = [
   { day: 0, label: "Late fee already charged", detail: "£12, added when the date passed. This policy leaves it in place.", kind: "neutral", fee: LATE_FEE },
   { day: 0, label: "Three unopened emails flag the file", detail: "Account facts only — routed to one in-app message instead of a fourth email.", kind: "neutral" },
-  { day: 1, label: "One in-app message, not a fourth email", detail: "Alex's chosen channel, outside quiet hours. Scored calm on the Pressure Index, with the one real date stated once.", kind: "support", add: 0.1 },
+  { day: 1, label: "One in-app message, not a fourth email", detail: "The customer's chosen channel, outside quiet hours. Scored calm on the Pressure Index, with the one real date stated once.", kind: "support", add: 0.1 },
   { day: 3, label: "Welcome-back, then Safe Mode", detail: `What changed in three lines; one tap to strip the app to what matters. Screen load ${FOCUS_LOAD_BEFORE} → ${FOCUS_LOAD_AFTER}.`, kind: "support", add: 0.08 },
   { day: 3, label: "Time Machine: one payment needs you", detail: "The rest pay themselves or can wait. Safe-to-Spend shows the £41 was already set aside.", kind: "support", add: 0.08 },
-  { day: 4, label: "Help me resolve this → guided payment", detail: "Alex asks; the bank offers three small steps. No change to terms.", kind: "support", add: 0.1 },
+  { day: 4, label: "Help me resolve this → guided payment", detail: "The customer asks; the bank offers three small steps. No change to terms.", kind: "support", add: 0.1 },
 ];
 
 const AFTER_RESOLVE_DESIGN: Step[] = [

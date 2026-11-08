@@ -70,7 +70,7 @@ export function SupportInbox({
         <div className="mt-5 rounded-xl border border-dashed border-edge p-6 text-center">
           <p className="font-medium text-fg-2">No requests yet.</p>
           <p className="mt-1 text-sm text-fg-3">
-            When Alex taps &ldquo;Help me resolve this&rdquo; and sends a request,
+            When {state.customer.firstName} taps &ldquo;Help me resolve this&rdquo; and sends a request,
             it appears here instantly.
           </p>
         </div>
@@ -107,7 +107,7 @@ function CaseDetail({
         {/* ------------------------------------------- what was shared -- */}
         <div className="rounded-xl border border-link/25 bg-link-dim p-4">
           <p className="text-xs font-semibold tracking-[0.12em] text-link uppercase">
-            What Alex shared
+            What {state.customer.firstName} shared
           </p>
           <p className="mt-2 text-[0.9375rem] font-medium text-fg">{c.summary}</p>
           <blockquote className="mt-2 border-l-2 border-link/40 pl-3 text-sm text-fg-2 italic">
@@ -127,7 +127,7 @@ function CaseDetail({
             />
           </dl>
           <p className="mt-2 text-xs text-fg-3">
-            Reviewed and sent by Alex · drafted by {c.draftedBy === "claude" ? "Claude" : "the app"} from Alex&apos;s answers
+            Reviewed and sent by {state.customer.firstName} · drafted by {c.draftedBy === "claude" ? "Claude" : "the app"} from {state.customer.firstName}&apos;s answers
           </p>
         </div>
 
@@ -148,7 +148,7 @@ function CaseDetail({
           </ul>
           <p className="mt-3 text-xs text-fg-3">
             None of these exist on this side. There is no field for them in a
-            request, and nothing on Alex&apos;s phone is sent here.
+            request, and nothing on {state.customer.firstName}&apos;s phone is sent here.
           </p>
           <p className="mt-2 text-xs text-fg-3">
             Proposed access boundaries. A production system would need technical
@@ -217,7 +217,7 @@ function CaseDetail({
       ) : null}
 
       {/* -------------------------------------- goodwill, only after paying -- */}
-      {paid && !state.credit.lateFeeRefunded ? (
+      {paid && !state.credit.lateFeeRefunded && !state.credit.lateFeeWaivedByGrace ? (
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-edge p-4" aria-label="Goodwill refund">
           <div>
             <p className="font-medium text-fg">Refund the {money(state.credit.lateFee)} late fee</p>

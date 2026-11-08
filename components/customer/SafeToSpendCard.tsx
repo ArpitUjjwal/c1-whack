@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Disclosure } from "@/components/ui/Disclosure";
+import { ListenButton } from "@/components/ui/ListenButton";
 import { Panel } from "@/components/ui/Panel";
 import { money } from "@/lib/format";
 import type { SafeToSpend } from "@/lib/selectors";
@@ -25,12 +26,18 @@ export function SafeToSpendCard({
 
   return (
     <Panel bloom="link" className="p-5" aria-labelledby="safe-heading">
-      <h2
-        id="safe-heading"
-        className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase"
-      >
-        Safe to spend
-      </h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2
+          id="safe-heading"
+          className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase"
+        >
+          Safe to spend
+        </h2>
+        <ListenButton
+          id="safe"
+          text={`You have ${money(safe.available)} safe to spend. That's after everything due in the next ${safe.horizonDays} days.`}
+        />
+      </div>
 
       <motion.p
         key={safe.available}

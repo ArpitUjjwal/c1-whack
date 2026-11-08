@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useSyncExternalStore } from "react";
+import type { StruggleId } from "./struggles";
 
 export interface DevicePrefs {
   /** "I can't handle banking today": the whole app reduced to what matters. */
@@ -25,9 +26,42 @@ export interface DevicePrefs {
   adaptiveEnabled: boolean;
   /** The welcome-back summary has been read. */
   welcomeBackSeen: boolean;
+
+  /* ---- Reading and listening. Preferences, not diagnoses: anyone can use them. */
+  /** Typeface for the whole app. Lexend is built for reading ease; Atkinson Hyperlegible for low vision. */
+  font: ReadingFont;
+  /** Scales the whole phone screen. */
+  textSize: TextSize;
+  /** Wider letter, word and line spacing, and no italics. */
+  wideSpacing: boolean;
+  /** A soft background tint, which some readers find easier than white. */
+  tint: Tint;
+  /** Darker text and stronger edges throughout. */
+  highContrast: boolean;
+  /** Read-aloud speed, as a speech-synthesis rate. */
+  speechRate: number;
+  /** In-app tips this customer has closed. They stay closed. */
+  dismissedTips: string[];
+  /** Make the "Listen" button prominent on every card. */
+  listenFirst: boolean;
+
+  /* ---- First-run setup ("what do you find hard?"). Never shared. ---- */
+  /** True once the setup has been completed or skipped. It is never shown again. */
+  onboarded: boolean;
+  /** What the customer said they find hard. Stays on this phone. */
+  struggles: StruggleId[];
+  /**
+   * Whether the customer agreed to share their preference labels with the
+   * support team. Only the labels are shared — never `struggles`.
+   */
+  sharePreferences: boolean;
   /** Which demo run these belong to; a reset starts them afresh. */
   epoch: number;
 }
+
+export type ReadingFont = "standard" | "lexend" | "atkinson";
+export type TextSize = "standard" | "large" | "xlarge";
+export type Tint = "none" | "cream" | "blue";
 
 const KEY = "c1a:device:v1";
 
@@ -36,9 +70,23 @@ const DEFAULTS: Omit<DevicePrefs, "epoch"> = {
   focusDeclined: false,
   adaptiveEnabled: true,
   welcomeBackSeen: false,
+  font: "standard",
+  textSize: "standard",
+  wideSpacing: false,
+  tint: "none",
+  highContrast: false,
+  speechRate: 1,
+  dismissedTips: [],
+  listenFirst: false,
+  onboarded: false,
+  struggles: [],
+  sharePreferences: false,
 };
 
 const SERVER: DevicePrefs = { ...DEFAULTS, epoch: 0 };
+
+/** Factory defaults, for putting a setting back when a choice is unticked. */
+export const DEVICE_DEFAULTS: DevicePrefs = SERVER;
 
 let cache: DevicePrefs | null = null;
 const listeners = new Set<() => void>();
@@ -69,6 +117,33 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
+/** Ready-made combinations, one tap each. Anyone can pick any of them. */
+export const READING_PRESETS: {
+  id: string;
+  label: string;
+  detail: string;
+  patch: Partial<DevicePrefs>;
+}[] = [
+  {
+    id: "dyslexia",
+    label: "Easier reading",
+    detail: "Lexend font, wider spacing, a cream background",
+    patch: { font: "lexend", wideSpacing: true, tint: "cream", textSize: "large" },
+  },
+  {
+    id: "low-vision",
+    label: "Bigger and bolder",
+    detail: "Atkinson Hyperlegible, extra-large text, high contrast",
+    patch: { font: "atkinson", textSize: "xlarge", highContrast: true, tint: "none" },
+  },
+  {
+    id: "standard",
+    label: "Standard",
+    detail: "Back to the default look",
+    patch: { font: "standard", textSize: "standard", wideSpacing: false, tint: "none", highContrast: false },
+  },
+];
+
 /**
  * Read and update this device's preferences for the current demo run.
  * Preferences saved under a different `epoch` read as defaults — derived,
@@ -76,16 +151,21 @@ function subscribe(listener: () => void): () => void {
  */
 export function useDevicePrefs(
   epoch: number,
+  /** What this customer had already set on their own phone before the demo. */
+  starting: Partial<DevicePrefs> = {},
 ): [DevicePrefs, (patch: Partial<Omit<DevicePrefs, "epoch">>) => void] {
   const stored = useSyncExternalStore(subscribe, read, () => SERVER);
-  const prefs: DevicePrefs = stored.epoch === epoch ? stored : { ...DEFAULTS, epoch };
+  const fresh = (): DevicePrefs => ({ ...DEFAULTS, ...starting, epoch });
+  const prefs: DevicePrefs = stored.epoch === epoch ? stored : fresh();
 
   const update = useCallback(
     (patch: Partial<Omit<DevicePrefs, "epoch">>) => {
       const current = read();
-      const base = current.epoch === epoch ? current : { ...DEFAULTS, epoch };
+      const base = current.epoch === epoch ? current : { ...DEFAULTS, ...starting, epoch };
       write({ ...base, ...patch, epoch });
     },
+    // `starting` comes from static profile data; its identity is stable per profile.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [epoch],
   );
 

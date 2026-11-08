@@ -24,6 +24,7 @@ import type {
 
 export const DIFFICULTY_LABEL: Record<Difficulty, string> = {
   cant_face_it: "I can't face sorting it out right now",
+  dd_failed: "My Direct Debit didn't go through",
   cant_pay_full: "I can't pay the full amount right now",
   dont_understand: "I don't understand what I owe",
   cant_find_how: "I can't work out how to pay",
@@ -33,6 +34,7 @@ export const DIFFICULTY_LABEL: Record<Difficulty, string> = {
 /** The support team's view of the same choice: neutral, third person. */
 const DIFFICULTY_SUMMARY: Record<Difficulty, string> = {
   cant_face_it: "Needs a simpler way to deal with it",
+  dd_failed: "Direct Debit was returned unpaid",
   cant_pay_full: "Can't pay the full amount right now",
   dont_understand: "Unsure what is owed",
   cant_find_how: "Can't find how to pay",
@@ -55,6 +57,7 @@ export const NOT_SHARED: string[] = [
   "Any diagnosis or health information",
   "How you've been using the app (strain, screen measurements)",
   "Whether Safe Mode is on",
+  "What you ticked as hard in setup",
   "What you explored in the Time Machine",
   "Private notes or conversations",
 ];

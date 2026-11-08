@@ -10,6 +10,9 @@
 
 export type Role = "customer" | "bank";
 
+/** The three demo customers. Each has a different combination of needs. */
+export type ProfileId = "alex" | "priya" | "sam";
+
 /** Who caused a thing to happen. Drives the icon + colour on the timeline. */
 export type Actor = "customer" | "agent" | "system";
 
@@ -63,6 +66,17 @@ export interface CreditAccount {
   lateFeeRefunded: boolean;
   /** ISO date the payment is now due, when an extension has been granted. */
   extendedDueDate: string | null;
+  /**
+   * The card's Direct Debit was returned unpaid on this ISO date (the linked
+   * account was short that day). Null when nothing bounced.
+   */
+  ddReturnedOn: string | null;
+  /** The last statements, oldest first: was the minimum paid on time? */
+  paymentHistory: { month: string; onTime: boolean }[];
+  /** ISO date the on-time grace rule last waived a late fee, if ever. */
+  graceUsedOn: string | null;
+  /** True when this late fee was waived by the grace rule, not charged. */
+  lateFeeWaivedByGrace: boolean;
   apr: number;
   accountNumber: string;
   type: "Credit Card";
@@ -114,7 +128,10 @@ export interface CustomerProfile {
   name: string;
   firstName: string;
   memberSince: string;
-  /** Self-declared accessibility needs, shown verbatim to the agent. */
+  /**
+   * Preference labels the customer chose to share with support, shown
+   * verbatim to the agent. Empty until they choose to share.
+   */
   cognitiveProfile: string[];
   /** Days between the previous session and today — the avoidance signal. */
   daysSinceLastOpen: number;
@@ -141,6 +158,11 @@ export interface ContactPreferences {
   quietHours: { start: number; end: number };
   /** ISO date the customer set these. */
   setOn: string;
+  /**
+   * Remind me this many days before a payment I make by hand. 0 = off.
+   * In-app only, and never counted as outreach: the customer asked for it.
+   */
+  remindDaysBefore: 0 | 1 | 2 | 3;
 }
 
 /** One contact made with the customer, on any channel. */
@@ -181,7 +203,10 @@ export type DemoAction =
   | "enter_safe_mode"
   | "time_machine_week"
   | "advocate_open"
-  | "advocate_send";
+  | "advocate_send"
+  | "setup_pick"
+  | "setup_finish"
+  | "setup_open";
 
 /**
  * Ephemeral cross-window instructions. Deliberately only demo choreography:
@@ -195,6 +220,7 @@ export type Signal = { type: "demo_action"; action: DemoAction };
 export type Difficulty =
   /** Capacity, not money — and no reason asked for. */
   | "cant_face_it"
+  | "dd_failed"
   | "cant_pay_full"
   | "dont_understand"
   | "cant_find_how"
@@ -275,6 +301,8 @@ export interface AppState {
   flags: Flags;
   /** Requests the customer chose to send. Newest last. */
   supportCases: SupportCase[];
+  /** Which demo customer this state belongs to. */
+  profileId: ProfileId;
   demo: DemoState;
   /**
    * Changes on every reset. Device-local preferences (Safe Mode, the welcome-
@@ -311,6 +339,11 @@ export type Action =
   | { type: "ACCEPT_SPLIT_PLAN" }
   | { type: "REFUND_LATE_FEE" }
   | { type: "SET_CONTACT_PREFERENCES"; preferences: ContactPreferences }
+  /**
+   * The customer chose (or stopped choosing) to share preference labels and
+   * an optional note with support. Empty arrays mean "nothing shared".
+   */
+  | { type: "SET_SHARED_PREFERENCES"; preferences: string[]; note: string }
   | { type: "REQUEST_SUPPORT"; request: SupportRequest }
   /** Omitting `id` acts on the newest open case — lets the Demo Director drive it. */
   | { type: "OPEN_CASE"; id?: string; who: string }
@@ -319,7 +352,8 @@ export type Action =
   | { type: "APPROVE_ARRANGEMENT"; id?: string; newDueDate: string; approver: string }
   | { type: "AGENT_NOTE"; text: string }
   | { type: "DEMO_SET_BEAT"; beat: number; active: boolean }
-  | { type: "RESET_DEMO" };
+  /** Starts the demo again, optionally as a different customer. */
+  | { type: "RESET_DEMO"; profile?: ProfileId };
 
 /* ----------------------------------------------------------------- messages */
 

@@ -41,8 +41,8 @@ export function TrustPanel({
             miss. <strong className="font-semibold text-fg">This stays on this phone.</strong>
           </li>
           <li>
-            Whether you&apos;ve turned on Safe Mode, and what you look at in the
-            Time Machine. <strong className="font-semibold text-fg">Also only on this phone.</strong>
+            What you said you find hard, whether Safe Mode is on, and what you look
+            at in the Time Machine. <strong className="font-semibold text-fg">Also only on this phone.</strong>
           </li>
         </ul>
 
@@ -123,6 +123,14 @@ function ContactPreferencesEditor({
             <Row label="Only by" value={CHANNEL_LABEL[prefs.channel]} />
             <Row label="At most" value={`${prefs.maxPerWeek} a week`} />
             <Row label="Never between" value={quietHoursLabel(prefs)} />
+            <Row
+              label="Reminders"
+              value={
+                prefs.remindDaysBefore
+                  ? `${prefs.remindDaysBefore} day${prefs.remindDaysBefore === 1 ? "" : "s"} before, in the app`
+                  : "Off"
+              }
+            />
           </dl>
           <p className="mt-2 text-xs text-fg-3">Set on {shortDate(prefs.setOn)}.</p>
           <Button
@@ -168,6 +176,18 @@ function ContactPreferencesEditor({
             value={draft.maxPerWeek}
             options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: `${n}` }))}
             onChange={(n) => setDraft({ ...draft, maxPerWeek: n })}
+          />
+          <Select
+            id="contact-remind"
+            label="Remind me before payments I make myself"
+            value={draft.remindDaysBefore}
+            options={[
+              { value: 0, label: "Off" },
+              { value: 1, label: "1 day before" },
+              { value: 2, label: "2 days before" },
+              { value: 3, label: "3 days before" },
+            ]}
+            onChange={(n) => setDraft({ ...draft, remindDaysBefore: n as 0 | 1 | 2 | 3 })}
           />
           <div className="grid grid-cols-2 gap-2">
             <Select

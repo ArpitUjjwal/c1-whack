@@ -70,7 +70,7 @@ export function reduce(state: AppState, action: Action): AppState {
         timeline: log(
           state,
           "customer",
-          "Alex opened the app",
+          `${state.customer.firstName} opened the app`,
           `First session in ${state.customer.daysSinceLastOpen} days.`,
           true,
         ),
@@ -186,7 +186,7 @@ export function reduce(state: AppState, action: Action): AppState {
           state,
           "agent",
           "Offered a payment extension",
-          `New due date proposed: ${longDate(action.newDueDate)}. Waiting on Alex to accept.`,
+          `New due date proposed: ${longDate(action.newDueDate)}. Waiting on ${state.customer.firstName} to accept.`,
         ),
       });
     }
@@ -223,7 +223,7 @@ export function reduce(state: AppState, action: Action): AppState {
           state,
           "agent",
           "Offered to split the payment into 3 smaller pieces",
-          "Smaller amounts are easier to start. Waiting on Alex.",
+          `Smaller amounts are easier to start. Waiting on ${state.customer.firstName}.`,
         ),
       });
     }
@@ -257,14 +257,45 @@ export function reduce(state: AppState, action: Action): AppState {
 
     case "REFUND_LATE_FEE": {
       // Goodwill follows action, never silence: only once the card is paid.
-      if (state.credit.lateFeeRefunded || state.credit.status !== "current") return state;
+      if (
+        state.credit.lateFeeRefunded ||
+        state.credit.lateFeeWaivedByGrace ||
+        state.credit.status !== "current"
+      ) {
+        return state;
+      }
       return next({
         credit: { ...state.credit, lateFeeRefunded: true },
         timeline: log(
           state,
           "agent",
           `Refunded the ${money(state.credit.lateFee)} late fee`,
-          "Once-a-year goodwill refund, applied after Alex paid.",
+          `Once-a-year goodwill refund, applied after ${state.customer.firstName} paid.`,
+        ),
+      });
+    }
+
+    case "SET_SHARED_PREFERENCES": {
+      const sharing = action.preferences.length > 0 || action.note.trim().length > 0;
+      const was = state.customer.cognitiveProfile.length > 0 || state.customer.supportNote.length > 0;
+      if (!sharing && !was) return state;
+      return next({
+        customer: {
+          ...state.customer,
+          cognitiveProfile: [...action.preferences],
+          supportNote: action.note.trim(),
+        },
+        timeline: log(
+          state,
+          "customer",
+          !sharing
+            ? `${state.customer.firstName} stopped sharing their preferences`
+            : was
+              ? `${state.customer.firstName} updated what they share`
+              : `${state.customer.firstName} shared their banking preferences`,
+          sharing
+            ? "Chosen in the app. Only these labels are shared, never the reasons."
+            : "Support no longer sees them. Plain language is the default for everyone.",
         ),
       });
     }
@@ -276,7 +307,7 @@ export function reduce(state: AppState, action: Action): AppState {
           state,
           "customer",
           "Updated contact preferences",
-          "Alex's own rules for how and when we get in touch.",
+          `${state.customer.firstName}'s own rules for how and when we get in touch.`,
         ),
       });
     }
@@ -308,8 +339,8 @@ export function reduce(state: AppState, action: Action): AppState {
         timeline: log(
           state,
           "customer",
-          `Alex sent support request #${ref}`,
-          `${action.request.summary} Reviewed by Alex before sending.`,
+          `${state.customer.firstName} sent support request #${ref}`,
+          `${action.request.summary} Reviewed by ${state.customer.firstName} before sending.`,
           true,
         ),
       });
@@ -349,7 +380,7 @@ export function reduce(state: AppState, action: Action): AppState {
           state,
           "agent",
           `Offered guided payment support on #${c.ref}`,
-          "A step-by-step way to pay appears in Alex's app. No change to terms.",
+          `A step-by-step way to pay appears in ${state.customer.firstName}'s app. No change to terms.`,
         ),
       });
     }
@@ -415,7 +446,7 @@ export function reduce(state: AppState, action: Action): AppState {
     }
 
     case "RESET_DEMO": {
-      return { ...createInitialState(), rev: state.rev + 1 };
+      return { ...createInitialState(action.profile ?? state.profileId), rev: state.rev + 1 };
     }
 
     default:

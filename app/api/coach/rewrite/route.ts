@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { COACH_SYSTEM } from "@/lib/ai/prompt";
+import { coachSystem, parseCoachCustomer, type CoachCustomer } from "@/lib/ai/prompt";
+
 
 /**
  * Rewrite a draft so it says the same true thing without applying pressure.
@@ -19,11 +20,29 @@ export async function POST(request: Request) {
   }
 
   let text: string;
-  let context: { amount?: string; agentName?: string; payBy?: string; locked?: string[] } = {};
+  let context: {
+    amount?: string;
+    agentName?: string;
+    firstName?: string;
+    payBy?: string;
+    locked?: string[];
+    tone?: "calm" | "warm" | "celebrate";
+    goodNews?: boolean;
+    customer?: CoachCustomer;
+  } = {};
   try {
     const body = (await request.json()) as {
       text?: unknown;
-      context?: { amount?: unknown; agentName?: unknown; payBy?: unknown; locked?: unknown };
+      context?: {
+        amount?: unknown;
+        agentName?: unknown;
+        firstName?: unknown;
+        payBy?: unknown;
+        locked?: unknown;
+        tone?: unknown;
+        goodNews?: unknown;
+        customer?: unknown;
+      };
     };
     if (typeof body.text !== "string" || !body.text.trim()) {
       return Response.json({ error: "bad_request" }, { status: 400 });
@@ -35,6 +54,10 @@ export async function POST(request: Request) {
     context = {
       amount: str(c.amount, 40),
       agentName: str(c.agentName, 60),
+      firstName: str(c.firstName, 40),
+      tone: c.tone === "warm" || c.tone === "celebrate" ? c.tone : "calm",
+      goodNews: c.goodNews === true,
+      customer: parseCoachCustomer(c.customer),
       payBy: str(c.payBy, 60),
       locked: Array.isArray(c.locked)
         ? c.locked.filter((x): x is string => typeof x === "string").slice(0, 4).map((x) => x.slice(0, 300))
@@ -50,16 +73,24 @@ export async function POST(request: Request) {
     const response = await client.messages.create({
       model: "claude-opus-5-5",
       max_tokens: 1200,
-      system: COACH_SYSTEM,
+      system: coachSystem(context.customer ?? parseCoachCustomer(null)),
       thinking: { type: "adaptive" },
       output_config: { effort: "low" },
       messages: [
         {
           role: "user",
-          content: `Rewrite this draft so Alex can act on it.
+          content: `Rewrite this draft so ${context.firstName ?? "the customer"} can act on it.
 
 Rules:
 - Keep every factual claim true. The amount owed is ${context.amount ?? "the minimum payment"}; do not change it, and do not imply nothing is owed.
+- Remove every insult, swear word or contemptuous phrase completely — never soften or paraphrase it.
+- Tone: ${
+            context.tone === "warm"
+              ? "warm — a friendly greeting by first name and one kind closing line, still adult and plain."
+              : context.tone === "celebrate" && context.goodNews
+                ? "celebratory — lead with the good news, short and genuine."
+                : "calm — plain, steady, no flourishes."
+          }${context.tone === "celebrate" && !context.goodNews ? " (Celebrate was picked, but there is no good news yet, so write it warm instead.)" : ""}
 - Remove threats, escalation, blame, manufactured urgency and vague consequences ("consequences", "further action", "to avoid collections"). No collections vocabulary.
 - A real consequence is information, not a threat. If the draft states or implies one (for example, credit reporting), keep it: say it once, calmly, with the date${context.payBy ? ` — "Paying it by ${context.payBy} should keep it off your credit file."` : ""}. Never invent a consequence and never delete a real one.${
             context.locked?.length

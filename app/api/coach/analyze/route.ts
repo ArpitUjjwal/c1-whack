@@ -1,7 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
-import { COACH_SYSTEM } from "@/lib/ai/prompt";
+import { coachSystem, parseCoachCustomer, type CoachCustomer } from "@/lib/ai/prompt";
+
 import {
   analysePressure,
   bandFor,
@@ -33,13 +34,14 @@ const KINDS = [
   "multiple-asks",
   "passive",
   "consequence",
+  "abuse",
 ] as const;
 
 const AnalysisSchema = z.object({
   score: z
     .number()
     .describe(
-      "0-100. How likely this message is to make Alex disengage. 0 is safe to send, 65+ would plausibly cause another silence.",
+      "0-100. How likely this message is to make the customer disengage. 0 is safe to send, 65+ would plausibly cause another silence.",
     ),
   findings: z
     .array(
@@ -66,8 +68,10 @@ export async function POST(request: Request) {
 
   let text: string;
   let locked: string[] = [];
+  let customer: CoachCustomer = parseCoachCustomer(null);
   try {
-    const body = (await request.json()) as { text?: unknown; locked?: unknown };
+    const body = (await request.json()) as { text?: unknown; locked?: unknown; customer?: unknown };
+    customer = parseCoachCustomer(body.customer);
     if (typeof body.text !== "string" || !body.text.trim()) {
       return Response.json({ error: "bad_request" }, { status: 400 });
     }
@@ -88,7 +92,7 @@ export async function POST(request: Request) {
     const response = await client.messages.parse({
       model: "claude-opus-5-5",
       max_tokens: 2000,
-      system: COACH_SYSTEM,
+      system: coachSystem(customer),
       thinking: { type: "adaptive" },
       // Latency matters here: this runs while the agent pauses mid-sentence.
       output_config: { effort: "low", format: zodOutputFormat(AnalysisSchema) },

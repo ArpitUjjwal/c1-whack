@@ -13,6 +13,7 @@ import {
 } from "@/lib/advocate";
 import { draftSupportRequest } from "@/lib/ai/client";
 import { CHANNEL_LABEL } from "@/lib/contact";
+import { profileConfig } from "@/lib/demo-data";
 import { isoDaysFromToday, longDate, money, shortDate } from "@/lib/format";
 import type { AppState, Difficulty, HelpWanted, SupportRequest } from "@/lib/types";
 
@@ -59,8 +60,9 @@ export function AdvocateSheet({
   const [step, setStep] = useState<Step>(preset ? "drafting" : "options");
   const [inputs, setInputs] = useState<AdvocateInputs>(() => ({
     item,
-    difficulty: "cant_face_it",
-    helpWanted: "simpler",
+    // The Demo Director's preset answers differ by customer (see demo-data).
+    difficulty: profileConfig(state.profileId).advocatePreset.difficulty,
+    helpWanted: profileConfig(state.profileId).advocatePreset.helpWanted,
     canPay: null,
     contact: prefs.channel,
     keepRepliesShort: true,

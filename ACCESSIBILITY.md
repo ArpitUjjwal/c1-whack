@@ -147,6 +147,70 @@ Three rules this is built under:
 3. **The output is advisory.** It can offer to simplify; it can never act for
    the customer.
 
+### First-run setup: "What do you find hard?"
+
+Shown once, the first time someone opens the app, before anything else. Its
+first screen offers *Read this to me* and *Make the text bigger*, so the setup
+is usable by the people it is for. Then six options, described as tasks and
+experiences rather than conditions, each stating what it will change:
+
+| They find hard | The app changes |
+| --- | --- |
+| Reading long bits of text | Lexend, wider spacing, cream background, larger text |
+| Seeing small text | Atkinson Hyperlegible, extra-large, high contrast |
+| Rather listen than read | A prominent *Listen* button on every card |
+| Remembering dates | Reminders 3 days before payments they make |
+| Starting money tasks, or too much on screen | Opens in Safe Mode |
+| Phone calls | Messages in the app, not calls |
+
+The app changes as each box is ticked. **What they tick never leaves the
+phone.** The next screen shows exactly which preference labels support would
+see and asks whether to share them — switched **off** by default. Contact rules
+(like reminders) are the one exception, and the screen says so: support has to
+see a rule to follow it. The Claude brief is built only from what was shared.
+
+Afterwards it never shows again; **Settings & help → Accessibility settings**
+holds the same checklist, the sharing switch and the note. Ticking applies an
+option; unticking undoes only what that option changed, and leaves anything the
+customer adjusted by hand. One piece of logic (`toggleStruggle`) serves both
+screens, so they cannot disagree. In the demo, Alex starts as a first-time
+user; Priya and Sam are already set up.
+
+### Reading and listening
+
+Options anyone can turn on in Help, with no reason asked, saved on the phone
+only (`lib/device.ts`, applied through data attributes in `globals.css` so every
+component follows):
+
+| Option | What it does |
+| --- | --- |
+| Font | Lexend (designed for reading ease) or Atkinson Hyperlegible (designed for low vision) |
+| Text size | Large or extra large; the whole screen scales and reflows |
+| Wider spacing | More letter, word and line spacing, and no italics |
+| Background | Cream or soft blue instead of plain |
+| High contrast | Near-black text everywhere, solid surfaces, stronger edges and focus |
+| Read aloud | A *Listen* button on every main card — the browser's own speech, a British voice, at the chosen speed. Works alongside a real screen reader, not instead of one |
+
+Two one-tap presets bundle common combinations: *Easier reading* and *Bigger and
+bolder*. Both pass the live audit (contrast 75/75 at AA; worst 5.76:1 and
+6.31:1).
+
+### Reminders
+
+"Remind me N days before payments I make myself" sits in the customer's own
+contact rules. Reminders show in the app on the day, the next one is always
+named, and the Time Machine marks each payment's reminder date. They were
+asked for, so they never count toward the weekly contact limit — and the agent
+script only promises a reminder when one is actually switched on.
+
+### Three customers, three combinations
+
+The demo carries three customers, switchable from the Care Centre — each
+described by what helps, never by a diagnosis: **Alex** (money tasks are hard
+to start), **Priya** (reads numbers more easily than paragraphs; already on
+*Easier reading*), and **Sam** (forgets dates; small print is hard to read;
+already on *Bigger and bolder*; his card's Direct Debit bounced).
+
 ### Safe Mode
 
 "I can't handle banking today" is one tap from the home screen and the
@@ -157,7 +221,7 @@ you like" — and the measured load drops below the 25 target.
 
 **Measured:** home-screen load 29 → **19**. (One pair, defined once as
 `FOCUS_LOAD_BEFORE` / `FOCUS_LOAD_AFTER` in `lib/engines/cognitive-load.ts`,
-and quoted by the simulation, the Friction Map and the demo.) Safe Mode is
+and quoted by the simulation, the Insights report and the demo.) Safe Mode is
 stored in device-local preferences (`lib/device.ts`), never in shared state.
 
 ### Welcome-back
@@ -277,6 +341,25 @@ second press required, when a send would break a rule. The evidence is printed
 beside it: people getting five or more creditor calls a month were far more
 likely to say contact harmed their mental health (91% against 57%).
 
+### The tone check
+
+The Calm / Warm / Celebrate buttons only label how a message is styled on the
+phone, so `lib/engines/sentiment.ts` checks that the words match:
+
+- **Insults block outright.** A list of insults, contempt and swearing —
+  tolerant of text-speak ("u need to") and spellings like "b1tch" or "f*ck" —
+  makes a message unsendable, with no "send anyway". Rewriting starts again
+  from the facts.
+- **A pre-built sentiment model** (AFINN-165, via the `sentiment` package)
+  scores polarity, with ordinary banking words ("pay", "fee", "due") zeroed so
+  only real hostility counts.
+- **The picked tone is compared with the detected one**, alongside the
+  Pressure Index: "You picked Calm, but this reads as hostile / pressuring / a
+  little firm". Celebrate is flagged when there is no good news yet.
+- **Rewrites follow the tone.** Calm is plain; Warm adds a greeting and a kind
+  close; Celebrate leads with the good news. Changing tone re-types from the
+  agent's original words, not from the last rewrite.
+
 ### Readability
 
 `lib/engines/readability.ts` computes Flesch–Kincaid grade, reading ease,
@@ -315,10 +398,18 @@ arrangement needs an illustrative eligibility check (asked for by the customer,
 none in the last 12 months, within adviser authority) and a second approver. A
 fee refund only unlocks after payment, once a year.
 
-The **Accessibility Friction Map** shows where *journeys* get stuck — from
-illustrative, aggregated task-completion data, never individuals and never
-mental-health classifications — so the bank can see whether its accessible
-journeys actually remove barriers.
+**Accessibility Insights** is the aggregate view: the top barriers in
+customers' own words (the categories they chose when asking for help), the
+hardest journeys, which response pathways resolve requests, and
+recommendations — two of which are tips shown in the app to everyone on that
+screen. It is built only from requests, journey completion and pathway
+outcomes. Nothing from a customer's phone (Safe Mode, reading settings,
+read-aloud, the Time Machine) feeds it, there are no mental-health
+classifications, and no group under ten is shown. Illustrative data.
+
+The **grace rule** waives a late fee automatically when the last three
+payments were on time, once a year. It needs no request and no explanation,
+and it rewards a record of paying rather than a period of silence.
 
 The 30-day simulation runs three lanes: the standard cadence, **the design
 alone** (one in-app message, welcome-back and Safe Mode, the Time Machine, a
@@ -394,7 +485,7 @@ credible:
 - The cognitive-load formula is a **heuristic**, not validated against any
   measure of real cognitive effort. It is shown beside its own output so it can
   be argued with.
-- The Rescue Simulator, eligibility rules and Friction Map use **illustrative**
+- The Rescue Simulator, eligibility rules, grace rule and Insights report use **illustrative**
   logic and data, not Capital One policy or real task-completion figures.
 - Device-local preferences share an origin with the console in this demo; on a
   real phone they would live in the device's own storage.

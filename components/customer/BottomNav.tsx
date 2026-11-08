@@ -6,7 +6,7 @@ const tabs: { id: CustomerTab; label: string }[] = [
   { id: "home", label: "Home" },
   { id: "ahead", label: "Look ahead" },
   { id: "accounts", label: "Accounts" },
-  { id: "help", label: "Help" },
+  { id: "help", label: "Settings & help" },
 ];
 
 /**

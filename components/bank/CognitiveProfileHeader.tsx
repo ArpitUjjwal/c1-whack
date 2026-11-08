@@ -43,14 +43,17 @@ export function CognitiveProfileHeader({
             aria-hidden="true"
             className="glass-2 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-lg font-semibold text-fg"
           >
-            AR
+            {customer.name
+              .split(" ")
+              .map((part) => part[0])
+              .join("")}
           </span>
           <div>
             <h1 id="profile-heading" className="text-2xl font-semibold text-fg">
               {customer.name}
             </h1>
             <p className="text-sm text-fg-3">
-              Customer since {customer.memberSince} · Card ••••8842 · Current account ••••4417 (linked)
+              Customer since {customer.memberSince} · Card ••••{state.credit.accountNumber.slice(-4)} · Current account ••••{state.current.accountNumber.slice(-4)} (linked)
             </p>
             <p className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-fg-2">
               <LiveDot online={customerOnline} />
@@ -61,37 +64,51 @@ export function CognitiveProfileHeader({
 
         <div className="max-w-xl">
           <h2 className="text-xs font-semibold tracking-[0.12em] text-fg-3 uppercase">
-            How Alex prefers to bank
+            How {customer.firstName} prefers to bank
           </h2>
-          <ul className="mt-2 flex flex-wrap gap-2">
-            {customer.cognitiveProfile.map((need) => (
-              <li key={need}>
-                <StatusPill tone="calm">{need}</StatusPill>
-              </li>
-            ))}
-          </ul>
+          {customer.cognitiveProfile.length ? (
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {customer.cognitiveProfile.map((need) => (
+                <li key={need}>
+                  <StatusPill tone="calm">{need}</StatusPill>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-fg-2">
+              Nothing shared. {customer.firstName} chooses what support sees — use plain
+              language, one thing at a time, and no pressure, as for everyone.
+            </p>
+          )}
         </div>
       </div>
 
       <div
         role="note"
-        aria-label="Alex's contact preferences"
+        aria-label={`${customer.firstName}'s contact preferences`}
         className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-link/25 bg-link-dim px-4 py-3 text-sm"
       >
         <span className="font-semibold text-fg">
-          Alex&apos;s own rules, set on a calm day ({shortDate(prefs.setOn)}):
+          {customer.firstName}&apos;s own rules, set on a calm day ({shortDate(prefs.setOn)}):
         </span>
         <span className="text-fg-2">{CHANNEL_LABEL[prefs.channel]} only</span>
         <span className="text-fg-2">At most {prefs.maxPerWeek} a week</span>
         <span className="text-fg-2">Never {quietHoursLabel(prefs)}</span>
+        <span className="text-fg-2">
+          {prefs.remindDaysBefore
+            ? `Reminders ${prefs.remindDaysBefore} day${prefs.remindDaysBefore === 1 ? "" : "s"} before`
+            : "No reminders"}
+        </span>
       </div>
 
-      <blockquote className="mt-3 rounded-xl border-l-2 border-calm bg-calm-dim p-4 text-[0.9375rem] text-fg-2">
-        <p className="italic">&ldquo;{customer.supportNote}&rdquo;</p>
-        <footer className="mt-1.5 text-xs font-medium text-calm not-italic">
-          — Alex&apos;s own words. No reason given, none needed.
-        </footer>
-      </blockquote>
+      {customer.supportNote ? (
+        <blockquote className="mt-3 rounded-xl border-l-2 border-calm bg-calm-dim p-4 text-[0.9375rem] text-fg-2">
+          <p className="italic">&ldquo;{customer.supportNote}&rdquo;</p>
+          <footer className="mt-1.5 text-xs font-medium text-calm not-italic">
+            — {customer.firstName}&apos;s own words, shared by choice. No reason given, none needed.
+          </footer>
+        </blockquote>
+      ) : null}
     </Panel>
   );
 }

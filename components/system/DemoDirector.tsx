@@ -55,7 +55,15 @@ export function DemoDirector({ role }: { role: Role }) {
 
       if (event.key === "d" || event.key === "D") {
         event.preventDefault();
-        go(active ? -1 : 0);
+        if (active) {
+          go(-1);
+        } else {
+          // The guided script is Alex's story from first open. Starting it
+          // always resets both windows to a fresh Alex — first-run setup
+          // included — so every beat lands as written.
+          dispatch({ type: "RESET_DEMO", profile: "alex" });
+          go(0);
+        }
         return;
       }
       if (!active) return;
@@ -74,7 +82,7 @@ export function DemoDirector({ role }: { role: Role }) {
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, beat, go]);
+  }, [active, beat, go, dispatch]);
 
   const current = active && beat >= 0 ? BEATS[beat] : null;
   const looksHere = current && (current.look === role || current.look === "both");

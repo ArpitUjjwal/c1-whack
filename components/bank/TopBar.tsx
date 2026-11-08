@@ -4,17 +4,24 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { CapitalOneMark } from "@/components/ui/CapitalOneMark";
 import { LiveDot } from "@/components/ui/LiveDot";
+import { PROFILE_IDS, profileConfig } from "@/lib/demo-data";
+import type { ProfileId } from "@/lib/types";
 
 export function TopBar({
   agentName,
   transport,
   peerCount,
   onReset,
+  profileId,
+  onSwitchProfile,
 }: {
   agentName: string;
   transport: "broadcast-channel" | "storage" | "none";
   peerCount: number;
   onReset: () => void;
+  profileId: ProfileId;
+  /** Restarts the demo as another customer, on both windows. */
+  onSwitchProfile: (id: ProfileId) => void;
 }) {
   return (
     <header className="sticky top-0 z-30 border-b border-edge bg-void/80 backdrop-blur-xl">
@@ -67,6 +74,22 @@ export function TopBar({
           >
             Customer view
           </Link>
+
+          <label className="inline-flex items-center gap-2 font-medium text-fg-2">
+            Customer
+            <select
+              value={profileId}
+              onChange={(e) => onSwitchProfile(e.target.value as ProfileId)}
+              className="min-h-11 rounded-lg border border-edge bg-glass-3 px-2 text-sm font-semibold text-fg"
+              title={profileConfig(profileId).summary}
+            >
+              {PROFILE_IDS.map((id) => (
+                <option key={id} value={id}>
+                  {profileConfig(id).label} — {profileConfig(id).summary}
+                </option>
+              ))}
+            </select>
+          </label>
 
           <Button size="sm" variant="outline" onClick={onReset}>
             Reset demo

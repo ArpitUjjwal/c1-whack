@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { OverlayRootProvider } from "@/components/ui/OverlayRoot";
+import type { DevicePrefs } from "@/lib/device";
 
 /**
  * Simulated phone. Width is constrained so the customer surface still reads as
@@ -16,7 +17,14 @@ import { OverlayRootProvider } from "@/components/ui/OverlayRoot";
  * So the frame also publishes itself as the overlay root, and overlays that
  * must cover the whole device portal into it from wherever they are declared.
  */
-export function PhoneFrame({ children }: { children: ReactNode }) {
+export function PhoneFrame({
+  children,
+  reading,
+}: {
+  children: ReactNode;
+  /** The customer's reading options. Applied as data attributes; see globals.css. */
+  reading?: Pick<DevicePrefs, "font" | "textSize" | "wideSpacing" | "tint" | "highContrast">;
+}) {
   /*
     State rather than a ref: the overlay root is read during render by the
     components portalling into it, so they have to re-render once it exists.
@@ -36,6 +44,11 @@ export function PhoneFrame({ children }: { children: ReactNode }) {
       />
       <div
         ref={setFrame}
+        data-font={reading?.font}
+        data-size={reading?.textSize}
+        data-spacing={reading?.wideSpacing ? "wide" : undefined}
+        data-tint={reading?.tint}
+        data-contrast={reading?.highContrast ? "high" : undefined}
         className="relative z-10 mx-auto flex h-dvh w-full max-w-md flex-col overflow-hidden bg-void sm:h-[880px] sm:max-h-[94vh] sm:rounded-[2.5rem] sm:ring-1 sm:ring-edge-2 sm:shadow-[0_40px_120px_-20px_rgba(13,21,34,0.18)]"
       >
         {/* Device chrome. Decorative, and excluded from every measurement. */}

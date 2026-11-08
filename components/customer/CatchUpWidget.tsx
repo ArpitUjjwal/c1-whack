@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Disclosure } from "@/components/ui/Disclosure";
+import { ListenButton, useIsReading } from "@/components/ui/ListenButton";
 import { Panel } from "@/components/ui/Panel";
 import { Sheet } from "@/components/ui/Sheet";
 import { CREDIT_FILE_RETENTION, creditFileLine, payByDate } from "@/lib/compliance";
@@ -50,21 +51,38 @@ export function CatchUpWidget({
   const { credit, flags, agentName } = state;
   const amount = credit.minimumDue;
   const splitAmount = Math.round((amount / 3) * 100) / 100;
+  const reading = useIsReading("catchup");
+  const bounced = credit.ddReturnedOn !== null;
+  const headline = bounced ? "Your Direct Debit didn't go through." : "A payment slipped past.";
+  const spoken = `${headline} Your ${credit.nickname} needs ${money(amount)}. ${creditFileLine(
+    payByDate(credit),
+  )} If you pay it now, you'll still have ${money(safeAfterPayment)} safe to spend.`;
 
   return (
-    <Panel bloom="calm" className="p-5" aria-labelledby="catchup-heading">
-      <p className="text-xs font-semibold tracking-[0.12em] text-calm uppercase">
-        One thing to look at
-      </p>
+    <Panel
+      bloom="calm"
+      className="p-5"
+      aria-labelledby="catchup-heading"
+      data-reading-now={reading}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold tracking-[0.12em] text-calm uppercase">
+          One thing to look at
+        </p>
+        <ListenButton id="catchup" text={spoken} />
+      </div>
 
       <h2
         id="catchup-heading"
         className={`mt-2 font-semibold text-fg ${focusMode ? "text-2xl" : "text-xl"}`}
       >
-        A payment slipped past.
+        {headline}
       </h2>
       <p className={`mt-2 text-fg-2 ${focusMode ? "text-base" : "text-[0.9375rem]"}`}>
-        No worries — this happens, and it&apos;s quick to fix. Your{" "}
+        {bounced
+          ? `The money wasn't in your ${state.current.provider} account on the day — nothing's wrong with the Direct Debit itself. `
+          : "No worries — this happens, and it's quick to fix. "}
+        Your{" "}
         {credit.nickname} needs{" "}
         <strong className="font-semibold text-fg">{money(amount)}</strong>.
       </p>
@@ -155,9 +173,11 @@ export function CatchUpWidget({
               <Row
                 label="Late fee"
                 value={
-                  credit.lateFeeRefunded
-                    ? `${money(credit.lateFee)} — refunded by ${agentName}`
-                    : money(credit.lateFee)
+                  credit.lateFeeWaivedByGrace
+                    ? `${money(credit.lateFee)} — waived: your last payments were on time`
+                    : credit.lateFeeRefunded
+                      ? `${money(credit.lateFee)} — refunded by ${agentName}`
+                      : money(credit.lateFee)
                 }
               />
               <Row label="Card balance" value={money(credit.balance)} />

@@ -139,6 +139,14 @@ export function JudgeOverlay({
                         body="1–14 day break, projected from known bills, dates and the balance, with assumptions printed. Read-only: it never pays, extends or waives."
                       />
                       <Mechanism
+                        name="First-run setup"
+                        body="Once, on first open: tick what you find hard and the app changes as you tick. What you tick stays on this phone; sharing the resulting preference labels with support is a separate choice, off by default. Change it all later in Settings & help."
+                      />
+                      <Mechanism
+                        name="Reading and listening"
+                        body="Reading font, text size, spacing, tint, high contrast and read-aloud — preferences anyone can use, saved on this phone only."
+                      />
+                      <Mechanism
                         name="Financial Advocate"
                         body="Prepares a support request from validated facts. The customer reviews exactly what is shared and sends it themselves."
                       />
@@ -147,7 +155,7 @@ export function JudgeOverlay({
                     <>
                       <Mechanism
                         name="Pressure Index"
-                        body="Scores every outgoing message as it is typed. Transparent lexicon plus structural rules; each finding names its span and its points."
+                        body="Scores every outgoing message as it is typed. Transparent lexicon plus structural rules; each finding names its span and its points. A tone check (insult list plus the AFINN sentiment model) compares the words with the tone picked, and blocks insults outright."
                       />
                       <Mechanism
                         name="Support handoff"
@@ -158,8 +166,8 @@ export function JudgeOverlay({
                         body="Three pathways for one request, from the customer's side. No pathway assumes an extension or fee waiver; arrangements need eligibility and a second approver."
                       />
                       <Mechanism
-                        name="Friction Map and policy simulation"
-                        body="Where journeys are hard, from illustrative aggregated data — never people. Plus thirty days under three outreach policies, assumptions printed."
+                        name="Accessibility Insights and policy simulation"
+                        body="Top barriers in customers' own words, hardest journeys, what works, and recommendations — from requests customers chose to send, never from their phones, and no group under ten. Plus thirty days under three outreach policies."
                       />
                     </>
                   )}
@@ -232,7 +240,7 @@ export function JudgeOverlay({
                   <p className="mt-2 text-sm text-fg-2">
                     Nothing. No screen load, no strain, no Safe Mode state and
                     no Time Machine activity crosses to this console. It sees
-                    account facts, presence, and the requests Alex chooses to send.
+                    account facts, presence, and the requests the customer chooses to send.
                   </p>
                 </section>
               ) : null}

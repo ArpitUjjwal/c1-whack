@@ -3,7 +3,9 @@
 import { useId, useMemo } from "react";
 import { Button } from "@/components/ui/Button";
 import { Disclosure } from "@/components/ui/Disclosure";
+import { ListenButton } from "@/components/ui/ListenButton";
 import { Panel } from "@/components/ui/Panel";
+import { remindersFor } from "@/lib/reminders";
 import { StatusPill } from "@/components/ui/StatusPill";
 import {
   BREAK_MAX_DAYS,
@@ -12,7 +14,7 @@ import {
   projectBreak,
   type Obligation,
 } from "@/lib/engines/time-machine";
-import { money } from "@/lib/format";
+import { money, shortDate } from "@/lib/format";
 import type { AppState } from "@/lib/types";
 
 /**
@@ -40,12 +42,19 @@ export function TimeMachine({
   const sliderId = useId();
   const result = useMemo(() => projectBreak(state, days), [state, days]);
   const hasOpenCase = state.supportCases.some((c) => c.status !== "resolved");
+  const reminders = useMemo(() => remindersFor(state), [state]);
+  const spoken = `If you take ${result.days} day${result.days === 1 ? "" : "s"} off. ${result.during
+    .map((o) => `${o.label}, ${money(o.amount)}, ${o.bucket === "needs_you" ? "needs you" : "pays itself"}.`)
+    .join(" ")} After those, your balance would be ${money(result.projected)}. ${result.plan}`;
 
   return (
     <Panel bloom="calm" className="p-5" aria-labelledby="tm-heading">
-      <p className="text-xs font-semibold tracking-[0.12em] text-calm uppercase">
-        Financial Time Machine
-      </p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold tracking-[0.12em] text-calm uppercase">
+          Financial Time Machine
+        </p>
+        <ListenButton id="time-machine" text={spoken} />
+      </div>
       <h2 id="tm-heading" className="mt-1.5 text-lg font-semibold text-fg">
         What if you needed some time away from managing money?
       </h2>
@@ -101,6 +110,12 @@ export function TimeMachine({
                 </span>
               </div>
               <p className="mt-1.5 text-sm text-fg-2">{item.note}</p>
+              {reminders.find((r) => r.id === item.id) ? (
+                <p className="mt-1 text-xs font-medium text-calm">
+                  Reminder in the app on{" "}
+                  {shortDate(reminders.find((r) => r.id === item.id)!.remindOn)}
+                </p>
+              ) : null}
               {item.bucket === "needs_you" && !hasOpenCase ? (
                 <Button
                   size="sm"

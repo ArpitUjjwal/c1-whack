@@ -8,6 +8,7 @@ import { AdvocateSheet, type AdvocateControl, type AdvocateItem } from "./Advoca
 import { AllClearCard } from "./AllClearCard";
 import { BottomNav, type CustomerTab } from "./BottomNav";
 import { CatchUpWidget } from "./CatchUpWidget";
+import { ComingUp } from "./ComingUp";
 import { CustomerActivity } from "./CustomerActivity";
 import { CustomerHeader } from "./CustomerHeader";
 import { FocusOffer } from "./FocusOffer";
@@ -18,10 +19,16 @@ import { SafeToSpendCard } from "./SafeToSpendCard";
 import { SuccessOverlay } from "./SuccessOverlay";
 import { SupportStatusCard } from "./SupportStatusCard";
 import { TimeMachine } from "./TimeMachine";
+import { Tip } from "./Tip";
 import { WelcomeBack } from "./WelcomeBack";
+import { Onboarding, type OnboardingControl } from "./Onboarding";
 import { DemoDirector } from "@/components/system/DemoDirector";
 import { JudgeOverlay } from "@/components/system/JudgeOverlay";
 import { Button } from "@/components/ui/Button";
+import { ListenFirstContext, SpeechRateContext } from "@/components/ui/ListenButton";
+import { remindersFor } from "@/lib/reminders";
+import { IN_APP_TIPS } from "@/lib/insights-data";
+import { profileConfig, startingDevicePrefs } from "@/lib/demo-data";
 import { useDevicePrefs } from "@/lib/device";
 import { FOCUS_OFFER_THRESHOLD } from "@/lib/engines/signals";
 import { money } from "@/lib/format";
@@ -54,7 +61,10 @@ export function CustomerApp() {
     Safe Mode, the welcome-back card and the adaptive switch are device-local.
     They never enter shared state, so the bank cannot see them.
   */
-  const [prefs, updatePrefs] = useDevicePrefs(state.epoch);
+  const [prefs, updatePrefs] = useDevicePrefs(
+    state.epoch,
+    startingDevicePrefs(state.profileId),
+  );
   const safeMode = prefs.safeMode;
 
   const mainRef = useRef<HTMLElement>(null);
@@ -67,8 +77,15 @@ export function CustomerApp() {
   });
   const strain = strainReading?.score ?? 0;
 
+  /*
+    What shows first, in order: the one-time setup, then the welcome-back
+    summary (even if Safe Mode is on — it is calm and short), then Safe Mode
+    or the full app.
+  */
+  const setupDone = prefs.onboarded;
   const welcomeBack =
-    !safeMode && !prefs.welcomeBackSeen && state.customer.daysSinceLastOpen >= 7;
+    setupDone && !prefs.welcomeBackSeen && state.customer.daysSinceLastOpen >= 7;
+  const onboardingControl = useRef<OnboardingControl | null>(null);
 
   /*
     The offer is derived, not stored: it appears while strain is high and
@@ -76,6 +93,7 @@ export function CustomerApp() {
     the app never asks again. Nothing about the offer is logged or shared.
   */
   const showFocusOffer =
+    setupDone &&
     prefs.adaptiveEnabled &&
     !safeMode &&
     !welcomeBack &&
@@ -101,6 +119,7 @@ export function CustomerApp() {
 
   const activeNudges = useMemo(() => selectActiveNudges(state), [state]);
   const unseenNudges = activeNudges.filter((n) => !n.seen).length;
+  const reminders = useMemo(() => remindersFor(state), [state]);
   const openCase = useMemo(
     () => [...state.supportCases].reverse().find((c) => c.status !== "resolved") ?? null,
     [state.supportCases],
@@ -121,10 +140,10 @@ export function CustomerApp() {
   }, [setView]);
 
   useEffect(() => {
-    if (unseenNudges === 0 || safeMode || welcomeBack) return;
+    if (unseenNudges === 0 || safeMode || welcomeBack || !setupDone) return;
     const t = window.setTimeout(() => dispatch({ type: "MARK_NUDGES_SEEN" }), 1800);
     return () => window.clearTimeout(t);
-  }, [unseenNudges, safeMode, welcomeBack, dispatch]);
+  }, [unseenNudges, safeMode, welcomeBack, setupDone, dispatch]);
 
   const cardItem: AdvocateItem | null =
     state.credit.status === "overdue" && state.credit.minimumDue > 0
@@ -135,15 +154,30 @@ export function CustomerApp() {
     setAdvocate({ item, preset, key: Date.now() });
   }, []);
 
+  /*
+    "Starting money tasks, or too much on screen" promises the app *opens* in
+    Safe Mode. So on each fresh open (once per page load), Safe Mode comes back
+    on while that choice is ticked — even if it was switched off last visit.
+    Within a visit, "Show me everything again" is respected.
+  */
+  const openedInSafeMode = useRef(false);
+  useEffect(() => {
+    if (openedInSafeMode.current || !hydrated || !setupDone) return;
+    openedInSafeMode.current = true;
+    if (prefs.struggles.includes("overwhelmed") && !prefs.safeMode) {
+      updatePrefs({ safeMode: true });
+    }
+  }, [hydrated, setupDone, prefs.struggles, prefs.safeMode, updatePrefs]);
+
   const enterSafeMode = useCallback(() => {
     updatePrefs({ safeMode: true, welcomeBackSeen: true });
     setTab("home");
   }, [updatePrefs]);
 
   /* Demo Director instructions. Handlers run from the listener, not render. */
-  const latest = useRef({ cardItem, enterSafeMode, openAdvocate });
+  const latest = useRef({ cardItem, enterSafeMode, openAdvocate, profileId: state.profileId });
   useEffect(() => {
-    latest.current = { cardItem, enterSafeMode, openAdvocate };
+    latest.current = { cardItem, enterSafeMode, openAdvocate, profileId: state.profileId };
   });
   useEffect(
     () =>
@@ -163,6 +197,19 @@ export function CustomerApp() {
           case "advocate_send":
             advocateControl.current?.send();
             break;
+          case "setup_pick": {
+            const demo = profileConfig(l.profileId).demoSetup;
+            if (demo) onboardingControl.current?.pick(demo.struggles);
+            break;
+          }
+          case "setup_open":
+            onboardingControl.current?.open();
+            break;
+          case "setup_finish": {
+            const demo = profileConfig(l.profileId).demoSetup;
+            if (demo) onboardingControl.current?.finish(demo.share, demo.note);
+            break;
+          }
           default:
             break;
         }
@@ -249,10 +296,27 @@ export function CustomerApp() {
     />
   );
 
-  const quietNudges = safeMode || welcomeBack;
+  const quietNudges = safeMode || welcomeBack || !setupDone;
+
+  /* Tips the Insights report recommends. Shown to everyone; closing one sticks. */
+  const showTip = (id: string) => !prefs.dismissedTips.includes(id);
+  const dismissTip = (id: string) =>
+    updatePrefs({ dismissedTips: [...prefs.dismissedTips, id] });
+  const listenTip = showTip(IN_APP_TIPS.listen.id) ? (
+    <Tip text={IN_APP_TIPS.listen.text} onDismiss={() => dismissTip(IN_APP_TIPS.listen.id)} />
+  ) : null;
+  const reminderTip =
+    !state.customer.contactPreferences.remindDaysBefore && showTip(IN_APP_TIPS.reminders.id) ? (
+      <Tip
+        text={IN_APP_TIPS.reminders.text}
+        onDismiss={() => dismissTip(IN_APP_TIPS.reminders.id)}
+      />
+    ) : null;
 
   return (
-    <PhoneFrame>
+    <SpeechRateContext.Provider value={prefs.speechRate}>
+    <ListenFirstContext.Provider value={prefs.listenFirst}>
+    <PhoneFrame reading={prefs}>
       <a
         href="#customer-main"
         className="sr-only-focusable absolute top-2 left-2 z-50 rounded-lg bg-fg px-3 py-2 text-sm font-semibold text-void"
@@ -264,7 +328,7 @@ export function CustomerApp() {
         state={state}
         agentOnline={agentOnline}
         unseenNudges={quietNudges ? 0 : unseenNudges}
-        compact={safeMode}
+        compact={safeMode || !setupDone}
       />
 
       <main
@@ -272,7 +336,16 @@ export function CustomerApp() {
         ref={mainRef}
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-1 pb-28"
       >
-        {safeMode ? (
+        {!setupDone ? (
+          /* ------------------------------------------ first-run setup -- */
+          <Onboarding
+            state={state}
+            prefs={prefs}
+            onPrefs={updatePrefs}
+            dispatch={dispatch}
+            controlRef={onboardingControl}
+          />
+        ) : safeMode && !welcomeBack ? (
           /* --------------------------------------------------- Safe Mode -- */
           <motion.div
             key="safe"
@@ -289,6 +362,7 @@ export function CustomerApp() {
             </div>
 
             <div aria-live="polite">{theOneThing}</div>
+            <ComingUp reminders={reminders} />
             {timeMachine}
 
             {activeNudges.length > 0 ? (
@@ -349,8 +423,10 @@ export function CustomerApp() {
                   />
 
                   <SafeToSpendCard safe={safe} onDisclosureToggle={noteDisclosure} />
+                  {listenTip}
                   {/* Announces when the one thing changes — e.g. the bank's reply arriving. */}
                   <div aria-live="polite">{theOneThing}</div>
+                  <ComingUp reminders={reminders} />
                   <CustomerActivity
                     events={state.timeline}
                     now={now}
@@ -369,7 +445,12 @@ export function CustomerApp() {
                 </>
               ) : null}
 
-              {!welcomeBack && tab === "ahead" ? timeMachine : null}
+              {!welcomeBack && tab === "ahead" ? (
+                <>
+                  {reminderTip}
+                  {timeMachine}
+                </>
+              ) : null}
 
               {!welcomeBack && tab === "accounts" ? (
                 <AccountsPanel state={state} onDisclosureToggle={noteDisclosure} />
@@ -382,10 +463,12 @@ export function CustomerApp() {
                   agentOnline={agentOnline}
                   adaptiveEnabled={prefs.adaptiveEnabled}
                   onToggleAdaptive={(on) => updatePrefs({ adaptiveEnabled: on })}
+                  prefs={prefs}
+                  onChangePrefs={updatePrefs}
                   onMessageAgent={(text) =>
                     dispatch({
                       type: "AGENT_NOTE",
-                      text: `Message from Alex: “${text}”`,
+                      text: `Message from ${state.customer.firstName}: “${text}”`,
                     })
                   }
                 />
@@ -405,7 +488,9 @@ export function CustomerApp() {
       ) : null}
 
       {/* Safe Mode hides navigation: one screen, one plan. */}
-      {!safeMode && !welcomeBack ? <BottomNav active={tab} onChange={setTab} /> : null}
+      {setupDone && !safeMode && !welcomeBack ? (
+        <BottomNav active={tab} onChange={setTab} />
+      ) : null}
 
       {advocate ? (
         <AdvocateSheet
@@ -442,6 +527,8 @@ export function CustomerApp() {
           : ""}
       </p>
     </PhoneFrame>
+    </ListenFirstContext.Provider>
+    </SpeechRateContext.Provider>
   );
 }
 

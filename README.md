@@ -15,8 +15,15 @@ barriers but **available to anyone, with no diagnosis or reason required**.
 > or overwhelmed (48%) by the volume of contact from their creditors.
 > — Money and Mental Health Policy Institute
 
-Set in the UK: Alex has a Capital One UK credit card (£41 past due) and a
-current account at another bank, linked over Open Banking.
+Set in the UK. Three demo customers, switchable from the Care Centre's top bar,
+each with a different combination of needs — described as preferences, never
+diagnoses:
+
+| Customer | Needs | Scenario |
+| --- | --- | --- |
+| **Alex** | Finds money tasks hard to start | 14 days away; a £41 card payment slipped. The guided demo. |
+| **Priya** | Reads numbers more easily than paragraphs (dyslexia) | Confused by her statement; phone already set to *Easier reading*. |
+| **Sam** | Forgets dates; small print is hard to read (memory, low vision) | His card's Direct Debit bounced; six on-time payments earn the grace rule; his balance won't cover rent. |
 
 | Route | Surface |
 | --- | --- |
@@ -40,6 +47,17 @@ Open `http://localhost:3000/customer` and `http://localhost:3000/bank` in two
 
 ## Customer side — banking that stays manageable
 
+**First-run setup** (`lib/struggles.ts`) — the first time someone opens the
+app: "What do you find hard? Pick any, or none." Six options in plain words
+(reading long text, seeing small text, rather listen, remembering dates,
+starting money tasks / too much on screen, phone calls), each saying what it
+will change. The app transforms live as they tick. What they tick is stored on
+the phone only; sharing the resulting preference labels with support is a
+separate choice, **off by default**. It never shows again — everything can be
+changed later in **Settings & help**, where unticking an option undoes only what
+that option changed (never a setting adjusted by hand). The setup itself offers
+*Read this to me* and *Make the text bigger* before asking anything.
+
 **Welcome-back** — after days away, the app says what changed in three lines
 and offers one next step. No pile of notifications, no guilt language.
 
@@ -53,6 +71,17 @@ don't touch my finances for N days?" A 1–14 day slider sorts every scheduled
 payment into *needs you*, *pays itself* or *can wait*, projects the balance
 after scheduled bills, and writes a gentle action plan — all from known facts,
 with the assumptions printed. It is read-only: it never pays, extends or waives.
+
+**Reading and listening** — a reading-friendly font (Lexend, or Atkinson
+Hyperlegible for low vision), larger text, wider spacing with no italics, a
+cream or soft-blue background, high contrast, and **read-aloud** on every main
+card (the browser's own speech, British voice, adjustable speed). One-tap
+presets: *Easier reading* and *Bigger and bolder*. Preferences, not
+diagnoses; saved on the phone only.
+
+**Reminders** — "remind me N days before payments I make myself", set in the
+customer's contact rules, shown in the app on the day and marked in the Time
+Machine. Requested, so never counted as outreach.
 
 **Financial Advocate** (`lib/advocate.ts`) — "I can't manage this one right
 now." Prepares a support request from validated facts and Alex's own answers
@@ -74,9 +103,25 @@ extension or a fee waiver. Choosing one updates Alex's phone instantly.
 illustrative eligibility check and a second approver; a fee refund only
 unlocks after payment, once a year.
 
-**Accessibility Friction Map** — where *journeys* get stuck (credit repayment,
-disputes, Direct Debits), from illustrative aggregated data. Journeys, never
-people; no mental-health classifications.
+**Accessibility Insights** (`lib/insights-data.ts`) — the aggregate view: top
+barriers in customers' own words (from the categories they chose when asking
+for help), the hardest journeys, which response pathways resolve requests, and
+recommendations. Two recommendations are tips that appear in the app for
+everyone on that screen. Built only from requests, journey completion and
+pathway outcomes — never from anything on a customer's phone — and no group
+under ten is shown. Illustrative data.
+
+**Grace rule** (`lib/engines/grace.ts`) — three on-time payments in a row earn
+one forgiven late fee, applied automatically, once a year. It rewards a record
+of paying, never a period of silence. Illustrative policy.
+
+**Tone check** (`lib/engines/sentiment.ts`) — the Calm / Warm / Celebrate
+buttons label how a message looks on the phone; this checks the words match.
+An insult list (catching text-speak like "u" and spellings like "b1tch") makes a
+message unsendable — no "send anyway" — and the AFINN sentiment model (`sentiment`
+package) flags hostile, negative or firm wording against the tone picked.
+Rewrites are written in the picked tone, and changing tone re-types from the
+agent's original words.
 
 **Pressure Index** (`lib/engines/pressure.ts`) — every reply is scored as it is
 typed. Threats go; a real consequence stays, once, calmly, with its date

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
+import { ListenButton } from "@/components/ui/ListenButton";
 import { Panel } from "@/components/ui/Panel";
 import { creditFileLine, payByDate } from "@/lib/compliance";
 import { daysUntil, money, shortDate } from "@/lib/format";
@@ -27,7 +28,13 @@ export function WelcomeBack({
   const { credit } = state;
   const changes: string[] = [];
 
-  if (credit.status === "overdue") {
+  if (credit.status === "overdue" && credit.ddReturnedOn) {
+    changes.push(
+      `Your Direct Debit for the card didn't go through on ${shortDate(credit.ddReturnedOn)} — the account was short that day. ${creditFileLine(payByDate(credit))}${
+        credit.lateFeeWaivedByGrace ? " There's no late fee: your last payments were on time." : ""
+      }`,
+    );
+  } else if (credit.status === "overdue") {
     changes.push(
       `Your ${money(credit.minimumDue)} card payment went past its date on ${shortDate(credit.dueDate)}. ${creditFileLine(payByDate(credit))}`,
     );
@@ -53,9 +60,17 @@ export function WelcomeBack({
       transition={{ duration: 0.3 }}
     >
       <Panel bloom="calm" className="p-5" aria-labelledby="welcome-heading">
-        <h2 id="welcome-heading" className="text-xl font-semibold text-fg">
-          Welcome back, {state.customer.firstName}.
-        </h2>
+        <div className="flex items-start justify-between gap-3">
+          <h2 id="welcome-heading" className="text-xl font-semibold text-fg">
+            Welcome back, {state.customer.firstName}.
+          </h2>
+          <ListenButton
+            id="welcome"
+            text={`Welcome back, ${state.customer.firstName}. Here's what changed while you were away. ${changes
+              .slice(0, 3)
+              .join(" ")}`}
+          />
+        </div>
         <p className="mt-1 text-[0.9375rem] text-fg-2">
           Here&apos;s what changed while you were away. That&apos;s all of it.
         </p>

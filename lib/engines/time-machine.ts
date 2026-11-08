@@ -84,7 +84,7 @@ export function projectBreak(state: AppState, rawDays: number): BreakProjection 
       inDays: overdue ? -credit.daysOverdue : daysUntil(credit.dueDate),
       bucket: "needs_you",
       note: overdue
-        ? creditFileLine(payByDate(credit))
+        ? `${credit.ddReturnedOn ? "Your Direct Debit didn't go through, so this one needs paying by hand. " : ""}${creditFileLine(payByDate(credit))}`
         : "Agreed new date. Paying by then keeps the arrangement on track.",
     });
   }

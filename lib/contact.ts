@@ -72,15 +72,15 @@ export function checkContact(
   const breaches: string[] = [];
 
   if (channel !== prefs.channel) {
-    breaches.push(`Alex asked for ${CHANNEL_LABEL[prefs.channel].toLowerCase()}s only.`);
+    breaches.push(`${state.customer.firstName} asked for ${CHANNEL_LABEL[prefs.channel].toLowerCase()}s only.`);
   }
   if (overLimit) {
     breaches.push(
-      `This would be the ${ordinal(nextOrdinal)} message this week. Alex's limit is ${prefs.maxPerWeek}.`,
+      `This would be the ${ordinal(nextOrdinal)} message this week. ${state.customer.firstName}'s limit is ${prefs.maxPerWeek}.`,
     );
   }
   if (isQuietHour(prefs, hour)) {
-    breaches.push(`It's inside Alex's quiet hours (${quietHoursLabel(prefs)}).`);
+    breaches.push(`It's inside ${state.customer.firstName}'s quiet hours (${quietHoursLabel(prefs)}).`);
   }
 
   return { sentThisWeek, nextOrdinal, overLimit, breaches };

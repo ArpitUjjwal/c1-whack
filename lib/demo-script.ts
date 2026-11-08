@@ -33,13 +33,28 @@ export const BEATS: Beat[] = [
   },
   {
     caption:
+      "First time in the new app: Alex ticks what's hard — starting money tasks, and phone calls. The app changes as they tick.",
+    look: "customer",
+    signal: { to: "customer", action: "setup_pick" },
+    note: "No diagnosis, no reasons. Read out the effect line under each option.",
+  },
+  {
+    caption:
+      "Alex chooses to share the resulting preferences — only those labels — with support. What they ticked never leaves the phone.",
+    look: "both",
+    signal: { to: "customer", action: "setup_finish" },
+    note: "Point at the console: 'How Alex prefers to bank' fills in live. Sharing starts switched off.",
+  },
+  {
+    caption:
       "Alex hasn't opened the app in 14 days. Instead of a pile of notifications: what changed, in three lines, and one next step.",
     look: "customer",
+    signal: { to: "customer", action: "setup_open" },
     note: "Welcome-back. No guilt language, no counts of days.",
   },
   {
     caption:
-      "“I can't handle banking today.” One tap — no diagnosis, no reason asked. The app becomes Safe Mode.",
+      "Because Alex said starting money tasks is hard, the app opens in Safe Mode: just what matters. (Anyone can also tap “I can't handle banking today”.)",
     look: "customer",
     signal: { to: "customer", action: "enter_safe_mode" },
     note: "Available to anyone. And the bank is never told: Safe Mode lives on the phone.",
@@ -111,9 +126,9 @@ export const BEATS: Beat[] = [
   },
   {
     caption:
-      "Across everyone: the Friction Map shows where journeys — not people — get stuck.",
+      "Across everyone: Accessibility Insights — what customers struggle with most, in their own words, and what actually works.",
     look: "bank",
-    note: "Is the accessibility feature actually removing the barrier? Illustrative, aggregated data.",
+    note: "Point at the recommendations: two are tips that go straight back into the app. Built from requests, never from phones; no group under ten.",
   },
   {
     caption:

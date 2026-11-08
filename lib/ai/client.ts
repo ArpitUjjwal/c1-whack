@@ -63,13 +63,14 @@ export async function deepAnalyse(
   text: string,
   locked: string[] = [],
   signal?: AbortSignal,
+  customer?: RewriteContext["customer"],
 ): Promise<PressureReport | null> {
   if (!text.trim()) return null;
   try {
     const res = await fetch("/api/coach/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, locked }),
+      body: JSON.stringify({ text, locked, customer }),
       signal,
     });
     if (!res.ok) return null;

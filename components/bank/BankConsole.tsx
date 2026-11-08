@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ActionPanel } from "./ActionPanel";
 import { ActivityTimeline } from "./ActivityTimeline";
 import { AgentScriptPanel } from "./AgentScriptPanel";
@@ -41,7 +41,6 @@ export function BankConsole() {
   );
   const customerPeers = peers.filter((peer) => peer.role === "customer").length;
 
-  const composerRef = useRef<HTMLDivElement>(null);
   const [seedLine, setSeedLine] = useState<string | null>(null);
 
   const sendNudge = useCallback(
@@ -61,7 +60,7 @@ export function BankConsole() {
         className="pointer-events-none fixed inset-0"
         style={{
           background:
-            "radial-gradient(70rem 40rem at 15% -10%, rgba(79,156,249,0.10), transparent 65%), radial-gradient(60rem 40rem at 90% 0%, rgba(157,140,255,0.08), transparent 65%)",
+            "radial-gradient(70rem 40rem at 15% -10%, rgba(15,86,184,0.07), transparent 65%), radial-gradient(60rem 40rem at 90% 0%, rgba(81,52,196,0.06), transparent 65%)",
         }}
       />
 
@@ -79,9 +78,12 @@ export function BankConsole() {
         onReset={reset}
       />
 
+      {/* The bottom padding clears the fixed demo hint bar, which sits at the
+          foot of the viewport and otherwise covers the last line of the
+          footer. */}
       <main
         id="bank-main"
-        className="relative mx-auto max-w-[1800px] space-y-4 px-4 py-5 lg:px-6"
+        className="relative mx-auto max-w-[1800px] space-y-4 px-4 pt-5 pb-16 lg:px-6"
       >
         <CognitiveProfileHeader
           state={state}
@@ -89,26 +91,39 @@ export function BankConsole() {
           customerView={customerView}
         />
 
-        {/* Desktop-first: three columns on a wide screen, stacking below. */}
-        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)_minmax(0,1.1fr)]">
+        {/*
+          Desktop-first, but without a cliff: two columns from `md`, three from
+          `lg`. The console is routinely run in a half-width window beside the
+          customer phone, and a single stack at that size ran to six screens.
+
+          The three groups answer the agent's three questions in order — what
+          is happening, what the model makes of it, what to send — and they are
+          deliberately close in height (roughly 1500px each at 1440px wide).
+          The page is as long as its tallest column, so a lopsided split costs
+          scrolling even when the short column is mostly air.
+        */}
+        <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)_minmax(0,1.1fr)]">
+          {/* The customer, their account, and what can be done to it. */}
           <div className="space-y-4">
             <CustomerLens telemetry={telemetry} online={customerOnline} />
             <LiveAccountPanel state={state} safe={safe} />
-          </div>
-
-          <div className="space-y-4">
-            <SilenceModelPanel reading={silence} />
-            <ActivityTimeline state={state} now={now} hydrated={hydrated} />
-          </div>
-
-          <div ref={composerRef} className="space-y-4">
-            <PressureComposer key={seedLine ?? "composer"} state={state} onSend={sendNudge} />
-            <AgentScriptPanel script={script} onUseLine={setSeedLine} />
             <ActionPanel
               state={state}
               dispatch={dispatch}
               customerOnline={customerOnline}
             />
+          </div>
+
+          {/* The model, and the activity it is reading. */}
+          <div className="space-y-4">
+            <SilenceModelPanel reading={silence} />
+            <ActivityTimeline state={state} now={now} hydrated={hydrated} />
+          </div>
+
+          {/* What to send. Spans both tracks on the two-column step. */}
+          <div className="space-y-4 md:col-span-2 lg:col-span-1">
+            <PressureComposer key={seedLine ?? "composer"} state={state} onSend={sendNudge} />
+            <AgentScriptPanel script={script} onUseLine={setSeedLine} />
           </div>
         </div>
 

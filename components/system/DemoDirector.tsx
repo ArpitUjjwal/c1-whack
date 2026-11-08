@@ -137,8 +137,21 @@ export function DemoDirector({ role }: { role: Role }) {
         ) : null}
       </AnimatePresence>
 
+      {/*
+        Hidden on the customer surface below `sm`. There the device is
+        full-bleed, so this bar — which draws above everything at z-50 — landed
+        on top of the bottom nav and clipped the last line of any open sheet.
+        Above `sm` the phone is inset from the viewport and the bar sits below
+        it; on the console there is nothing anchored to the bottom to hit. It
+        advertises keyboard shortcuts, so a phone-width viewport is also where
+        it has least to say.
+      */}
       {!active ? (
-        <p className="pointer-events-none fixed bottom-3 left-1/2 z-50 -translate-x-1/2 text-[0.6875rem] text-fg-3/70">
+        <p
+          className={`pointer-events-none fixed bottom-3 left-1/2 z-50 -translate-x-1/2 text-[0.6875rem] text-fg-3/70 ${
+            role === "customer" ? "hidden sm:block" : ""
+          }`}
+        >
           <Key>D</Key> demo · <Key>?</Key> how it works
         </p>
       ) : null}

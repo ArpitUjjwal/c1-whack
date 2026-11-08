@@ -12,9 +12,9 @@ const base =
   "disabled:active:scale-100 select-none";
 
 /*
-  Bright accents carry near-black text rather than white. On a dark field that
-  is both the higher-contrast choice and the one that reads as deliberate
-  rather than as a default button.
+  Accent fills carry canvas-light text (`text-void`), not ink. Every accent is
+  deep enough that this clears 6:1, and on a light field a saturated fill with
+  light type reads as deliberate rather than as a default button.
 */
 const variants: Record<Variant, string> = {
   primary: "bg-link text-void hover:brightness-110",

@@ -12,13 +12,12 @@ const fills: Record<Tone, string> = {
   red: "bg-red",
 };
 
-const glows: Record<Tone, string> = {
-  link: "shadow-[0_0_12px_-2px_var(--color-link)]",
-  pos: "shadow-[0_0_12px_-2px_var(--color-pos)]",
-  attn: "shadow-[0_0_12px_-2px_var(--color-attn)]",
-  calm: "shadow-[0_0_12px_-2px_var(--color-calm)]",
-  red: "shadow-[0_0_14px_-2px_var(--color-red)]",
-};
+/*
+  A coloured glow is noise on a light field — it muddies the fill rather than
+  lifting it. The fill keeps the same tight shadow at every tone, so the bar
+  reads as sitting in its track.
+*/
+const fillShadow = "shadow-[0_1px_2px_-1px_rgba(13,21,34,0.25)]";
 
 /**
  * A measured value with a real `meter` role.
@@ -57,10 +56,10 @@ export function Meter({
       aria-valuemax={max}
       aria-valuetext={valueText}
       aria-label={label}
-      className={`${h} w-full overflow-hidden rounded-full bg-glass-2 ${className}`}
+      className={`${h} w-full overflow-hidden rounded-full bg-track ${className}`}
     >
       <motion.div
-        className={`h-full rounded-full ${fills[tone]} ${glows[tone]}`}
+        className={`h-full rounded-full ${fills[tone]} ${fillShadow}`}
         initial={false}
         animate={{ width: `${Math.max(pct, pct > 0 ? 1.5 : 0)}%` }}
         transition={

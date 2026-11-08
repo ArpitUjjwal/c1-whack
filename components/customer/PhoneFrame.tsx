@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode, Ref } from "react";
+import { useState, type ReactNode } from "react";
+import { OverlayRootProvider } from "@/components/ui/OverlayRoot";
 
 /**
  * Simulated phone. Width is constrained so the customer surface still reads as
@@ -8,14 +9,20 @@ import type { ReactNode, Ref } from "react";
  *
  * `relative` matters: nudges, sheets and the success overlay position against
  * this element rather than the viewport, so they stay inside the "device".
+ *
+ * Being the positioned ancestor is not enough on its own, though — it only
+ * works for an overlay rendered as a direct child, which is true of the nudge
+ * stack and the success overlay but not of a sheet opened from inside a card.
+ * So the frame also publishes itself as the overlay root, and overlays that
+ * must cover the whole device portal into it from wherever they are declared.
  */
-export function PhoneFrame({
-  children,
-  frameRef,
-}: {
-  children: ReactNode;
-  frameRef?: Ref<HTMLDivElement>;
-}) {
+export function PhoneFrame({ children }: { children: ReactNode }) {
+  /*
+    State rather than a ref: the overlay root is read during render by the
+    components portalling into it, so they have to re-render once it exists.
+  */
+  const [frame, setFrame] = useState<HTMLDivElement | null>(null);
+
   return (
     <div className="noise flex min-h-dvh items-center justify-center bg-abyss p-0 sm:p-6">
       {/* Ambient field behind the device. Decorative. */}
@@ -24,12 +31,12 @@ export function PhoneFrame({
         className="pointer-events-none fixed inset-0 opacity-70"
         style={{
           background:
-            "radial-gradient(60rem 40rem at 50% -10%, rgba(79,156,249,0.10), transparent 70%), radial-gradient(40rem 30rem at 50% 110%, rgba(157,140,255,0.08), transparent 70%)",
+            "radial-gradient(60rem 40rem at 50% -10%, rgba(15,86,184,0.07), transparent 70%), radial-gradient(40rem 30rem at 50% 110%, rgba(81,52,196,0.06), transparent 70%)",
         }}
       />
       <div
-        ref={frameRef}
-        className="relative z-10 mx-auto flex h-dvh w-full max-w-md flex-col overflow-hidden bg-void sm:h-[880px] sm:max-h-[94vh] sm:rounded-[2.5rem] sm:ring-1 sm:ring-edge-2 sm:shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)]"
+        ref={setFrame}
+        className="relative z-10 mx-auto flex h-dvh w-full max-w-md flex-col overflow-hidden bg-void sm:h-[880px] sm:max-h-[94vh] sm:rounded-[2.5rem] sm:ring-1 sm:ring-edge-2 sm:shadow-[0_40px_120px_-20px_rgba(13,21,34,0.18)]"
       >
         {/* Device chrome. Decorative, and excluded from every measurement. */}
         <div
@@ -44,7 +51,7 @@ export function PhoneFrame({
             <span>100%</span>
           </span>
         </div>
-        {children}
+        <OverlayRootProvider node={frame}>{children}</OverlayRootProvider>
       </div>
     </div>
   );

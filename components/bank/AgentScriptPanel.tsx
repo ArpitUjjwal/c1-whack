@@ -69,7 +69,12 @@ export function AgentScriptPanel({
             <p className="rounded-xl border-l-2 border-calm bg-calm-dim p-4 text-base leading-relaxed font-medium text-fg">
               {script.opener}
             </p>
-            <ul className="mt-3 space-y-2">
+            {/*
+              Capped and scrolled, the way the activity timeline is: a long
+              script should scroll inside its own panel rather than stretch
+              the column and push everything beside it down the page.
+            */}
+            <ul className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
               {script.lines.map((line) => (
                 <li key={line} className="flex items-start gap-2.5">
                   <span aria-hidden="true" className="mt-2 text-xs text-calm">

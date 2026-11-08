@@ -2,10 +2,19 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useId, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { useOverlayRoot } from "./OverlayRoot";
 
 /**
  * Bottom sheet dialog, scoped to the phone frame rather than the viewport so
  * the demo still looks like a phone when both windows are side by side.
+ *
+ * It renders through a portal into the frame rather than in place. `absolute
+ * inset-0` resolves against the nearest positioned ancestor, and the sheets
+ * are opened from inside cards — `Panel` sets `position: relative` whenever it
+ * carries a bloom — so rendering in place scoped the sheet, and its scrim, to
+ * a single card: the sheet floated mid-screen with its top clipped by the
+ * scrolling main, and the rest of the app stayed lit and clickable behind it.
  *
  * Accessibility: `role="dialog"` + `aria-modal`, labelled by its own heading,
  * focus moves in on open and returns to the trigger on close, Escape closes,
@@ -28,6 +37,7 @@ export function Sheet({
   const descId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  const overlayRoot = useOverlayRoot();
 
   useEffect(() => {
     if (!open) return;
@@ -72,7 +82,7 @@ export function Sheet({
     };
   }, [open, onClose]);
 
-  return (
+  const sheet = (
     <AnimatePresence>
       {open ? (
         <motion.div
@@ -87,7 +97,7 @@ export function Sheet({
             type="button"
             aria-label="Close"
             onClick={onClose}
-            className="absolute inset-0 cursor-default bg-abyss/75 backdrop-blur-sm"
+            className="absolute inset-0 cursor-default bg-scrim backdrop-blur-sm"
           />
           <motion.div
             ref={panelRef}
@@ -119,4 +129,11 @@ export function Sheet({
       ) : null}
     </AnimatePresence>
   );
+
+  /*
+    No overlay root means no device to stay inside — render in place. The root
+    is also null on the very first client render, before the frame's callback
+    ref has run, which is harmless: a sheet is only ever opened by a tap.
+  */
+  return overlayRoot ? createPortal(sheet, overlayRoot) : sheet;
 }

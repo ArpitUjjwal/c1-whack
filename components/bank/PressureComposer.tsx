@@ -406,9 +406,16 @@ function renderHighlights(text: string, spans: PressureSpan[]) {
 
   spans.forEach((span, i) => {
     if (span.start > cursor) nodes.push(text.slice(cursor, span.start));
-    const style = SPAN_STYLE[span.kind];
+    /*
+      `<mark>` has a yellow UA background, so a kind with no style of its own
+      has to clear it. The ones that do carry a wash must not be given
+      `bg-transparent` as well — Tailwind emits both, the reset wins on source
+      order, and the wash silently never renders. That is what used to happen
+      to all four: the underline showed and the colour behind the words did not.
+    */
+    const style = SPAN_STYLE[span.kind] || "bg-transparent";
     nodes.push(
-      <mark key={i} className={`rounded-sm bg-transparent text-transparent ${style}`}>
+      <mark key={i} className={`rounded-sm text-transparent ${style}`}>
         {text.slice(span.start, span.end)}
       </mark>,
     );

@@ -234,9 +234,9 @@ Carried through both surfaces:
 
 | Area | Implementation |
 | --- | --- |
-| Contrast | Every text token pinned to a measured ratio; floor is 4.5:1. `--color-fg-3` (6.0:1) is the lightest text permitted. |
-| Brand red | 3.7:1 on the canvas — **fills and indicators only**, white on red (5.5:1) for text over it, `--color-red-fg` (7.2:1) as the paired text red. |
-| Focus | One unmistakable style: 2px solid white, 2px offset, on every interactive element. |
+| Contrast | Every text token pinned to a measured ratio; floor is 4.5:1. `--color-fg-3` (5.5:1 on the canvas, 4.96:1 at its worst composite) is the lightest text permitted. |
+| Brand red | 5.0:1 on the light canvas, so it clears text contrast on its own; white on red is 5.5:1 for text over a red fill, and `--color-red-fg` (7.0:1) is the darker paired red used on a red wash. |
+| Focus | One unmistakable style: 2px solid ink (`#0d1522`), 2px offset, on every interactive element — it clears the white panels and the saturated accent fills alike. |
 | Touch targets | 44px minimum height at every button size (WCAG 2.5.5 AAA; the AA floor is 24px). |
 | Live regions | `aria-live="polite"` throughout — never `assertive`. A screen reader finishes its sentence before announcing an incoming nudge, which matters a great deal mid-task. |
 | Dialogs | `role="dialog"`, `aria-modal`, labelled by their own heading, focus moved in on open, Tab trapped inside, Escape closes, focus restored to the trigger. |
@@ -244,7 +244,7 @@ Carried through both surfaces:
 | Colour independence | Status is always carried by text as well as colour. |
 | Reduced motion | `prefers-reduced-motion` collapses every animation, removes confetti and the scan/noise effects, and Framer Motion's own handling takes over transforms. |
 | Forced colors | Windows High Contrast restores hairline borders and drops translucency and glow. |
-| Skip links | "Skip to main content" first in the tab order on both surfaces. |
+| Skip links | "Skip to main content" first in the tab order on both surfaces, and `scroll-padding-top` keeps the landing clear of the console's sticky top bar rather than parking the heading underneath it. |
 | Headings | Real `h1`/`h2`/`h3` outline, verified by the Judge overlay. |
 | Keyboard | Every flow completable without a mouse. |
 
@@ -257,7 +257,7 @@ the live DOM and reports:
 
 - **Contrast** of every element that owns visible text, computed from the
   colours the browser actually resolved — compositing each translucent layer
-  exactly as the browser does, so the glass surfaces are measured *as rendered*,
+  exactly as the browser does, so the translucent panels are measured *as rendered*,
   not as designed. Large-text thresholds (3:1) are applied where they apply.
 - **Touch targets**, using the *effective* hit area: a 16px radio inside a 44px
   label is a 44px target, because the label activates it.

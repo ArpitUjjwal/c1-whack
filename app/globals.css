@@ -3,9 +3,10 @@
 /*
   Clarity — design tokens.
 
-  Dark-first "calm futurism". Depth comes from layered translucency, hairline
-  edges and soft radial glow rather than drop shadows, so the surface reads as
-  glass over a deep field instead of cards on paper.
+  Light "calm paper". Depth comes from a grey canvas, near-white panels, a
+  hairline edge and a soft shadow — not from translucency or glow. Frosted
+  glass over a light field reads as nothing, so the surface recipe below is
+  paper raised off a page rather than glass over a deep one.
 
   Every text token below is pinned to a measured contrast ratio against the
   canvas, and the floor is 4.5:1. The Proof Layer re-measures these at runtime
@@ -18,38 +19,52 @@
 */
 @theme {
   /* ---- Field -------------------------------------------------------- */
-  --color-void: #06090f;
-  --color-deep: #0a0f18;
-  --color-abyss: #03050a;
+  --color-void: #f2f5fa; /* the canvas */
+  --color-deep: #e8edf5; /* recessed surfaces — sheets, bottom nav */
+  --color-abyss: #dfe6ef; /* furthest backdrop, behind the device */
 
-  /* Translucent surfaces, composited over the field. */
-  --color-glass: rgba(255, 255, 255, 0.04);
-  --color-glass-2: rgba(255, 255, 255, 0.07);
-  --color-glass-3: rgba(255, 255, 255, 0.11);
-  --color-edge: rgba(255, 255, 255, 0.09);
-  --color-edge-2: rgba(255, 255, 255, 0.16);
+  /* Translucent surfaces, composited over the field. White over grey, so a
+     panel lifts off the canvas instead of sinking into it. */
+  --color-glass: rgba(255, 255, 255, 0.72);
+  --color-glass-2: rgba(255, 255, 255, 0.92);
+  --color-glass-3: #ffffff;
+  --color-edge: rgba(13, 21, 34, 0.1);
+  --color-edge-2: rgba(13, 21, 34, 0.16);
+
+  /* Modal scrim. A light wash cannot make an overlay recede, so this one is
+     ink: 55% of the text colour over whatever is behind it. */
+  --color-scrim: rgba(13, 21, 34, 0.55);
+  /* Recessed track for meters, where a near-white fill would be invisible. */
+  --color-track: rgba(13, 21, 34, 0.08);
 
   /* ---- Text --------------------------------------------------------- */
-  --color-fg: #f2f6fa; /* 18.1:1 on --color-void */
-  --color-fg-2: #a8b7c7; /* 9.8:1 */
-  --color-fg-3: #7d8fa3; /* 6.0:1 — the floor, never go below */
+  --color-fg: #0d1522; /* 16.8:1 on --color-void */
+  --color-fg-2: #4a5a70; /* 6.4:1 */
+  --color-fg-3: #556579; /* 5.5:1 — the quietest text; 4.96:1 at its worst composite */
 
   /* ---- Semantic ----------------------------------------------------- */
-  --color-pos: #3ddc97; /* 11.3:1 — resolved, safe, caught up */
-  --color-pos-dim: rgba(61, 220, 151, 0.14);
-  --color-attn: #f0a93b; /* 9.9:1 — needs a look, never alarm */
-  --color-attn-dim: rgba(240, 169, 59, 0.14);
-  --color-link: #4f9cf9; /* 7.1:1 — interactive */
-  --color-link-dim: rgba(79, 156, 249, 0.14);
-  --color-calm: #9d8cff; /* 7.3:1 — agent presence, gentle */
-  --color-calm-dim: rgba(157, 140, 255, 0.14);
+  /*
+    Each accent is dark enough to serve three jobs at once: as text on the
+    canvas, as text on its own 10% wash (the StatusPill recipe, 12px semibold,
+    so 4.5:1 applies), and as a fill carrying canvas-light text on top. The
+    second number below is that wash case, which is the tight one.
+  */
+  --color-pos: #076b48; /* 6.0:1 · 5.2:1 on wash — resolved, safe, caught up */
+  --color-pos-dim: rgba(7, 107, 72, 0.1);
+  --color-attn: #7a4900; /* 6.9:1 · 6.0:1 — needs a look, never alarm */
+  --color-attn-dim: rgba(122, 73, 0, 0.1);
+  --color-link: #0f56b8; /* 6.3:1 · 5.4:1 — interactive */
+  --color-link-dim: rgba(15, 86, 184, 0.1);
+  --color-calm: #5134c4; /* 7.3:1 · 6.2:1 — agent presence, gentle */
+  --color-calm-dim: rgba(81, 52, 196, 0.1);
 
-  /* Brand red. 3.7:1 on the canvas — fails text contrast, so it is used only
-     as a fill or indicator with white on top (white on red is 5.5:1).
-     --color-red-fg is the paired text red at 7.2:1. */
+  /* Brand red, untouched. On a light canvas it clears text contrast on its
+     own (5.0:1), and white on it is 5.5:1, so it works as fill or as type.
+     --color-red-fg is the darker paired text red at 7.0:1, used where red sits
+     on its own wash. */
   --color-red: #cc2427;
-  --color-red-fg: #ff6b6b;
-  --color-red-dim: rgba(204, 36, 39, 0.16);
+  --color-red-fg: #a81115;
+  --color-red-dim: rgba(204, 36, 39, 0.1);
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 
@@ -62,7 +77,28 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
-  color-scheme: dark;
+  color-scheme: light;
+
+  /*
+    Keep anchored scrolls clear of the console's sticky top bar. Without this
+    the bar's own "Skip to main content" link landed the page 116px under it,
+    hiding the customer's name — the accessibility affordance delivering the
+    user to the one thing it was meant to reveal. It also governs where the
+    browser parks an element that Tab moves focus to.
+
+    The bar wraps as it narrows: measured at 69px on one line, 116px on two
+    (below 1280) and 171px on three (at 390). The two steps below cover each
+    of those. Overshooting only ever costs air above the target, and for the
+    skip link — whose target sits at the top of the document — it costs
+    nothing, because the scroll is clamped at zero.
+  */
+  scroll-padding-top: 11rem;
+}
+
+@media (min-width: 1280px) {
+  html {
+    scroll-padding-top: 5.5rem;
+  }
 }
 
 body {
@@ -74,8 +110,8 @@ body {
 }
 
 /*
-  A faint noise field. Flat dark surfaces band badly on projectors and read as
-  cheap; 2.5% monochrome noise fixes both. Purely decorative and non-blocking.
+  A faint noise field. Flat surfaces band badly on projectors and read as
+  cheap; 2% monochrome noise fixes both. Purely decorative and non-blocking.
 */
 .noise::before {
   content: "";
@@ -83,30 +119,29 @@ body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.025;
+  opacity: 0.02;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* ------------------------------------------------------------- surfaces -- */
 
 /*
-  One glass recipe used everywhere: translucent fill, hairline edge, and a
-  single-pixel inner highlight along the top that reads as a lit edge.
+  One paper recipe used everywhere: near-white fill, hairline edge, and a soft
+  shadow tinted with the text colour rather than black, so the lift reads as
+  light falling on paper instead of a grey halo.
 */
 .glass {
   background: var(--color-glass);
   border: 1px solid var(--color-edge);
-  box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
-    0 1px 2px 0 rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 2px 0 rgba(13, 21, 34, 0.06);
 }
 
 .glass-2 {
   background: var(--color-glass-2);
   border: 1px solid var(--color-edge-2);
   box-shadow:
-    inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
-    0 8px 32px -8px rgba(0, 0, 0, 0.7);
+    0 1px 2px 0 rgba(13, 21, 34, 0.06),
+    0 12px 32px -12px rgba(13, 21, 34, 0.18);
 }
 
 /* A soft coloured bloom behind a card. Decorative; never carries meaning. */
@@ -114,15 +149,24 @@ body {
   position: relative;
   isolation: isolate;
 }
+/*
+  The horizontal insets are pinned to 0 on purpose. An absolutely positioned
+  pseudo-element still contributes to its scroll container's scrollable
+  overflow, so bleeding the glow sideways made every panel drag the page
+  sideways with it — 20% of each panel's width, which on a wide console came
+  to a quarter of the viewport. The glow still rises above the card (the top
+  inset is negative, and overflow above the top edge is unreachable, so it
+  costs nothing); it just no longer spills past its left and right edges.
+*/
 .bloom::after {
   content: "";
   position: absolute;
-  inset: -40% -20% 40% -20%;
+  inset: -40% 0 40% 0;
   z-index: -1;
   pointer-events: none;
   background: radial-gradient(
     ellipse at 50% 0%,
-    var(--bloom-color, rgba(79, 156, 249, 0.18)),
+    var(--bloom-color, rgba(15, 86, 184, 0.08)),
     transparent 70%
   );
 }
@@ -130,11 +174,11 @@ body {
 /* ---------------------------------------------------------------- focus -- */
 
 /*
-  One unmistakable focus style. White on a dark field clears every surface,
-  including coloured fills.
+  One unmistakable focus style. Ink on a light field clears every surface,
+  including the saturated accent fills.
 */
 :where(a, button, [role="button"], input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 2px solid #ffffff;
+  outline: 2px solid #0d1522;
   outline-offset: 2px;
   border-radius: 0.5rem;
 }
@@ -165,17 +209,17 @@ body {
   border-width: 0;
 }
 
-/* Dark scrollbars; a default light one wrecks the field. */
+/* Quiet scrollbars; the default chrome is heavier than anything else here. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  scrollbar-color: rgba(13, 21, 34, 0.22) transparent;
 }
 *::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 *::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(13, 21, 34, 0.2);
   border-radius: 999px;
   border: 3px solid transparent;
   background-clip: content-box;
@@ -195,13 +239,13 @@ body {
 
 @keyframes c1-ring {
   0% {
-    box-shadow: 0 0 0 0 rgba(61, 220, 151, 0.4);
+    box-shadow: 0 0 0 0 rgba(7, 107, 72, 0.35);
   }
   70% {
-    box-shadow: 0 0 0 14px rgba(61, 220, 151, 0);
+    box-shadow: 0 0 0 14px rgba(7, 107, 72, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(61, 220, 151, 0);
+    box-shadow: 0 0 0 0 rgba(7, 107, 72, 0);
   }
 }
 
@@ -228,7 +272,7 @@ body {
   background: linear-gradient(
     to bottom,
     transparent,
-    rgba(79, 156, 249, 0.12),
+    rgba(15, 86, 184, 0.08),
     transparent
   );
   animation: c1-scan 3.5s linear infinite;

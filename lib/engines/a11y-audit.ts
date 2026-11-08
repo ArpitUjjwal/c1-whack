@@ -231,11 +231,11 @@ function resolveBackground(el: HTMLElement): RGBA | null {
     node = node.parentElement;
   }
 
-  if (layers.length === 0) return [6, 9, 15, 1]; // --color-void
+  if (layers.length === 0) return [242, 245, 250, 1]; // --color-void
 
   // Bottom-most layer first, then composite upward.
   let base: RGBA = layers[layers.length - 1];
-  if (base[3] < 1) base = composite(base, [6, 9, 15, 1]);
+  if (base[3] < 1) base = composite(base, [242, 245, 250, 1]);
   for (let i = layers.length - 2; i >= 0; i -= 1) {
     base = composite(layers[i], base);
   }

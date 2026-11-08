@@ -78,7 +78,7 @@ export function JudgeOverlay({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[70] flex justify-end bg-abyss/70 backdrop-blur-sm"
+            className="fixed inset-0 z-[70] flex justify-end bg-scrim backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-label="How it works, and the live accessibility audit"
@@ -261,8 +261,8 @@ export function JudgeOverlay({
 
                   <p className="mt-4 text-xs text-fg-3">
                     Ratios are computed from resolved colours, compositing every
-                    translucent layer exactly as the browser does — so the glass
-                    surfaces are measured as rendered, not as designed.
+                    translucent layer exactly as the browser does — so the
+                    panels are measured as rendered, not as designed.
                   </p>
                 </section>
               ) : null}
